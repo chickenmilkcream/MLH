@@ -3,14 +3,14 @@
 
 #include <string>
 #include <cstdint>
-#include <memtable.h>
+#include "memtable.h"
 
 using namespace std;
 
 class KeyValueStore
 {
     public:        
-        KeyValueStore(uint32_t memtable_size);
+        explicit KeyValueStore(uint32_t memtable_size);
         void open(string db);
         void close();
         uint64_t get(uint64_t key);

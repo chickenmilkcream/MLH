@@ -2,6 +2,7 @@
 #define MEMTABLE_H
 
 #include <cstdint>
+#include "AvlTree.h"
 
 class Entry
 {

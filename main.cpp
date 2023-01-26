@@ -18,10 +18,20 @@
 // 4KB page size
 
 #include <iostream>
+#include "memtable.h"
+#include "kv_store.h"
  
 int main(int argc, char *argv[])
 {
     std::cout << "Hello World" << std::endl;
+    
+
+    auto kv_store = KeyValueStore((uint32_t ) 69420);
+    kv_store.put( (uint64_t ) 69, (uint64_t) 1);
+
+
+
+
     
     return argc == 3 ? EXIT_SUCCESS : EXIT_FAILURE; // optional return value
 }
