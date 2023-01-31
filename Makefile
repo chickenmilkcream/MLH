@@ -1,11 +1,10 @@
 CC := g++
 CFLAGS := -Wall -g
-binaries=memtable
 
 all: $(TARGET)
 
-%: %.cpp
-	$(CC) $(CFLAGS) -c $<
+memtable: memtable.cpp
+	$(CC) -o memtable memtable.cpp
 
 clean:
-	rm -rf *.o $(binaries)
+	rm -rf *.o memtable
