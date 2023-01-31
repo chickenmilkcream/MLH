@@ -37,6 +37,13 @@ void Memtable::scan_helper(Entry root, uint64_t min_key, uint64_t max_key)
 {
 }
 
+Memtable::Memtable(uint32_t memtable_size)
+{
+    memtable_size = memtable_size;
+    current_size = 0;
+    root = Entry();
+}
+
 int main()
 {
     const int ITEM_NOT_FOUND = -9999;

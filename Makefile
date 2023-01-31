@@ -1,7 +1,7 @@
 CC := g++
 CFLAGS := -Wall -g
 
-all: $(TARGET)
+all: memtable
 
 memtable: memtable.cpp
 	$(CC) -o memtable memtable.cpp
