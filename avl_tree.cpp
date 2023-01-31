@@ -1,4 +1,4 @@
-#include "AvlTree.h"
+#include "avl_tree.h"
 #include <iostream>
 
 using namespace std;
@@ -12,8 +12,7 @@ using namespace std;
  * Construct the tree.
  */
 template <class Comparable>
-AvlTree<Comparable>::AvlTree( const Comparable & notFound ) :
-        ITEM_NOT_FOUND( notFound ), root( NULL )
+AvlTree<Comparable>::AvlTree(const Comparable &notFound) : ITEM_NOT_FOUND(notFound), root(NULL)
 {
 }
 
@@ -21,8 +20,7 @@ AvlTree<Comparable>::AvlTree( const Comparable & notFound ) :
  * Copy constructor.
  */
 template <class Comparable>
-AvlTree<Comparable>::AvlTree( const AvlTree<Comparable> & rhs ) :
-        ITEM_NOT_FOUND( rhs.ITEM_NOT_FOUND ), root( NULL )
+AvlTree<Comparable>::AvlTree(const AvlTree<Comparable> &rhs) : ITEM_NOT_FOUND(rhs.ITEM_NOT_FOUND), root(NULL)
 {
     *this = rhs;
 }
@@ -31,16 +29,16 @@ AvlTree<Comparable>::AvlTree( const AvlTree<Comparable> & rhs ) :
  * Destructor for the tree.
  */
 template <class Comparable>
-AvlTree<Comparable>::~AvlTree( )
+AvlTree<Comparable>::~AvlTree()
 {
-    makeEmpty( );
+    makeEmpty();
 }
 
 /**
  * Insert key into the tree; duplicates are ignored.
  */
 template <class Comparable>
-void AvlTree<Comparable>::insert( const Comparable & key, int val)
+void AvlTree<Comparable>::insert(const Comparable &key, int val)
 {
     insert(key, root, val);
 }
@@ -49,10 +47,9 @@ void AvlTree<Comparable>::insert( const Comparable & key, int val)
  * Remove key from the tree. Nothing is done if key is not found.
  */
 template <class Comparable>
-void AvlTree<Comparable>::remove( const Comparable & key )
+void AvlTree<Comparable>::remove(const Comparable &key)
 {
-    cout << "Sorry, remove unimplemented; " << key <<
-         " still present" << endl;
+    cout << "Sorry, remove unimplemented; " << key << " still present" << endl;
 }
 
 /**
@@ -60,9 +57,9 @@ void AvlTree<Comparable>::remove( const Comparable & key )
  * Return smallest item or ITEM_NOT_FOUND if empty.
  */
 template <class Comparable>
-const Comparable & AvlTree<Comparable>::findMin( ) const
+const Comparable &AvlTree<Comparable>::findMin() const
 {
-    return elementAt( findMin( root ) );
+    return elementAt(findMin(root));
 }
 
 /**
@@ -70,9 +67,9 @@ const Comparable & AvlTree<Comparable>::findMin( ) const
  * Return the largest item of ITEM_NOT_FOUND if empty.
  */
 template <class Comparable>
-const Comparable & AvlTree<Comparable>::findMax( ) const
+const Comparable &AvlTree<Comparable>::findMax() const
 {
-    return elementAt( findMax( root ) );
+    return elementAt(findMax(root));
 }
 
 /**
@@ -80,19 +77,19 @@ const Comparable & AvlTree<Comparable>::findMax( ) const
  * Return the matching item or ITEM_NOT_FOUND if not found.
  */
 template <class Comparable>
-const Comparable & AvlTree<Comparable>::
-find( const Comparable & x ) const
+const Comparable &AvlTree<Comparable>::
+    find(const Comparable &x) const
 {
-    return elementAt( find( x, root ) );
+    return elementAt(find(x, root));
 }
 
 /**
  * Make the tree logically empty.
  */
 template <class Comparable>
-void AvlTree<Comparable>::makeEmpty( )
+void AvlTree<Comparable>::makeEmpty()
 {
-    makeEmpty( root );
+    makeEmpty(root);
 }
 
 /**
@@ -100,7 +97,7 @@ void AvlTree<Comparable>::makeEmpty( )
  * Return true if empty, false otherwise.
  */
 template <class Comparable>
-bool AvlTree<Comparable>::isEmpty( ) const
+bool AvlTree<Comparable>::isEmpty() const
 {
     return root == NULL;
 }
@@ -109,12 +106,12 @@ bool AvlTree<Comparable>::isEmpty( ) const
  * Print the tree contents in sorted order.
  */
 template <class Comparable>
-void AvlTree<Comparable>::printTree( ) const
+void AvlTree<Comparable>::printTree() const
 {
-    if( isEmpty( ) )
+    if (isEmpty())
         cout << "Empty tree" << endl;
     else
-        printTree( root );
+        printTree(root);
 }
 
 /**
@@ -123,12 +120,12 @@ void AvlTree<Comparable>::printTree( ) const
 template <class Comparable>
 const AvlTree<Comparable> &
 AvlTree<Comparable>::
-operator=( const AvlTree<Comparable> & rhs )
+operator=(const AvlTree<Comparable> &rhs)
 {
-    if( this != &rhs )
+    if (this != &rhs)
     {
-        makeEmpty( );
-        root = clone( rhs.root );
+        makeEmpty();
+        root = clone(rhs.root);
     }
     return *this;
 }
@@ -138,9 +135,9 @@ operator=( const AvlTree<Comparable> & rhs )
  * Return the element field or ITEM_NOT_FOUND if t is NULL.
  */
 template <class Comparable>
-const Comparable & AvlTree<Comparable>::elementAt( AvlNode<Comparable> *t ) const
+const Comparable &AvlTree<Comparable>::elementAt(AvlNode<Comparable> *t) const
 {
-    if( t == NULL )
+    if (t == NULL)
         return ITEM_NOT_FOUND;
     else
         return t->element;
@@ -152,31 +149,31 @@ const Comparable & AvlTree<Comparable>::elementAt( AvlNode<Comparable> *t ) cons
  * t is the node that roots the tree.
  */
 template <class Comparable>
-void AvlTree<Comparable>::insert( const Comparable & x, AvlNode<Comparable> * & t, int val) const
+void AvlTree<Comparable>::insert(const Comparable &x, AvlNode<Comparable> *&t, int val) const
 {
-    if( t == NULL )
-        t = new AvlNode<Comparable>( x, NULL, NULL );
-    else if( x < t->element )
+    if (t == NULL)
+        t = new AvlNode<Comparable>(x, NULL, NULL);
+    else if (x < t->element)
     {
-        insert( x, t->left , val);
-        if( height( t->left ) - height( t->right ) == 2 )
-            if( x < t->left->element )
-                rotateWithLeftChild( t );
+        insert(x, t->left, val);
+        if (height(t->left) - height(t->right) == 2)
+            if (x < t->left->element)
+                rotateWithLeftChild(t);
             else
-                doubleWithLeftChild( t );
+                doubleWithLeftChild(t);
     }
-    else if( t->element < x )
+    else if (t->element < x)
     {
-        insert( x, t->right, val );
-        if( height( t->right ) - height( t->left ) == 2 )
-            if( t->right->element < x )
-                rotateWithRightChild( t );
+        insert(x, t->right, val);
+        if (height(t->right) - height(t->left) == 2)
+            if (t->right->element < x)
+                rotateWithRightChild(t);
             else
-                doubleWithRightChild( t );
+                doubleWithRightChild(t);
     }
     else
-        ;  // Duplicate; do nothing
-    t->height = max( height( t->left ), height( t->right ) ) + 1;
+        ; // Duplicate; do nothing
+    t->height = max(height(t->left), height(t->right)) + 1;
 }
 
 /**
@@ -185,12 +182,12 @@ void AvlTree<Comparable>::insert( const Comparable & x, AvlNode<Comparable> * & 
  */
 template <class Comparable>
 AvlNode<Comparable> *
-AvlTree<Comparable>::findMin( AvlNode<Comparable> *t ) const
+AvlTree<Comparable>::findMin(AvlNode<Comparable> *t) const
 {
-    if( t == NULL)
+    if (t == NULL)
         return t;
 
-    while( t->left != NULL )
+    while (t->left != NULL)
         t = t->left;
     return t;
 }
@@ -201,12 +198,12 @@ AvlTree<Comparable>::findMin( AvlNode<Comparable> *t ) const
  */
 template <class Comparable>
 AvlNode<Comparable> *
-AvlTree<Comparable>::findMax( AvlNode<Comparable> *t ) const
+AvlTree<Comparable>::findMax(AvlNode<Comparable> *t) const
 {
-    if( t == NULL )
+    if (t == NULL)
         return t;
 
-    while( t->right != NULL )
+    while (t->right != NULL)
         t = t->right;
     return t;
 }
@@ -219,29 +216,29 @@ AvlTree<Comparable>::findMax( AvlNode<Comparable> *t ) const
  */
 template <class Comparable>
 AvlNode<Comparable> *
-AvlTree<Comparable>::find( const Comparable & x, AvlNode<Comparable> *t ) const
+AvlTree<Comparable>::find(const Comparable &x, AvlNode<Comparable> *t) const
 {
-    while( t != NULL )
-        if( x < t->element )
+    while (t != NULL)
+        if (x < t->element)
             t = t->left;
-        else if( t->element < x )
+        else if (t->element < x)
             t = t->right;
         else
-            return t;    // Match
+            return t; // Match
 
-    return NULL;   // No match
+    return NULL; // No match
 }
 
 /**
  * Internal method to make subtree empty.
  */
 template <class Comparable>
-void AvlTree<Comparable>::makeEmpty( AvlNode<Comparable> * & t ) const
+void AvlTree<Comparable>::makeEmpty(AvlNode<Comparable> *&t) const
 {
-    if( t != NULL )
+    if (t != NULL)
     {
-        makeEmpty( t->left );
-        makeEmpty( t->right );
+        makeEmpty(t->left);
+        makeEmpty(t->right);
         delete t;
     }
     t = NULL;
@@ -252,20 +249,20 @@ void AvlTree<Comparable>::makeEmpty( AvlNode<Comparable> * & t ) const
  */
 template <class Comparable>
 AvlNode<Comparable> *
-AvlTree<Comparable>::clone( AvlNode<Comparable> * t ) const
+AvlTree<Comparable>::clone(AvlNode<Comparable> *t) const
 {
-    if( t == NULL )
+    if (t == NULL)
         return NULL;
     else
-        return new AvlNode<Comparable>( t->element, clone( t->left ),
-                                        clone( t->right ), t->height );
+        return new AvlNode<Comparable>(t->element, clone(t->left),
+                                       clone(t->right), t->height);
 }
 
 /**
  * Return the height of node t or -1 if NULL.
  */
 template <class Comparable>
-int AvlTree<Comparable>::height( AvlNode<Comparable> *t ) const
+int AvlTree<Comparable>::height(AvlNode<Comparable> *t) const
 {
     return t == NULL ? -1 : t->height;
 }
@@ -274,7 +271,7 @@ int AvlTree<Comparable>::height( AvlNode<Comparable> *t ) const
  * Return maximum of lhs and rhs.
  */
 template <class Comparable>
-int AvlTree<Comparable>::max( int lhs, int rhs ) const
+int AvlTree<Comparable>::max(int lhs, int rhs) const
 {
     return lhs > rhs ? lhs : rhs;
 }
@@ -285,13 +282,13 @@ int AvlTree<Comparable>::max( int lhs, int rhs ) const
  * Update heights, then set new root.
  */
 template <class Comparable>
-void AvlTree<Comparable>::rotateWithLeftChild( AvlNode<Comparable> * & k2 ) const
+void AvlTree<Comparable>::rotateWithLeftChild(AvlNode<Comparable> *&k2) const
 {
     AvlNode<Comparable> *k1 = k2->left;
     k2->left = k1->right;
     k1->right = k2;
-    k2->height = max( height( k2->left ), height( k2->right ) ) + 1;
-    k1->height = max( height( k1->left ), k2->height ) + 1;
+    k2->height = max(height(k2->left), height(k2->right)) + 1;
+    k1->height = max(height(k1->left), k2->height) + 1;
     k2 = k1;
 }
 
@@ -301,13 +298,13 @@ void AvlTree<Comparable>::rotateWithLeftChild( AvlNode<Comparable> * & k2 ) cons
  * Update heights, then set new root.
  */
 template <class Comparable>
-void AvlTree<Comparable>::rotateWithRightChild( AvlNode<Comparable> * & k1 ) const
+void AvlTree<Comparable>::rotateWithRightChild(AvlNode<Comparable> *&k1) const
 {
     AvlNode<Comparable> *k2 = k1->right;
     k1->right = k2->left;
     k2->left = k1;
-    k1->height = max( height( k1->left ), height( k1->right ) ) + 1;
-    k2->height = max( height( k2->right ), k1->height ) + 1;
+    k1->height = max(height(k1->left), height(k1->right)) + 1;
+    k2->height = max(height(k2->right), k1->height) + 1;
     k1 = k2;
 }
 
@@ -318,10 +315,10 @@ void AvlTree<Comparable>::rotateWithRightChild( AvlNode<Comparable> * & k1 ) con
  * Update heights, then set new root.
  */
 template <class Comparable>
-void AvlTree<Comparable>::doubleWithLeftChild( AvlNode<Comparable> * & k3 ) const
+void AvlTree<Comparable>::doubleWithLeftChild(AvlNode<Comparable> *&k3) const
 {
-    rotateWithRightChild( k3->left );
-    rotateWithLeftChild( k3 );
+    rotateWithRightChild(k3->left);
+    rotateWithLeftChild(k3);
 }
 
 /**
@@ -331,10 +328,10 @@ void AvlTree<Comparable>::doubleWithLeftChild( AvlNode<Comparable> * & k3 ) cons
  * Update heights, then set new root.
  */
 template <class Comparable>
-void AvlTree<Comparable>::doubleWithRightChild( AvlNode<Comparable> * & k1 ) const
+void AvlTree<Comparable>::doubleWithRightChild(AvlNode<Comparable> *&k1) const
 {
-    rotateWithLeftChild( k1->right );
-    rotateWithRightChild( k1 );
+    rotateWithLeftChild(k1->right);
+    rotateWithRightChild(k1);
 }
 
 /**
@@ -342,12 +339,12 @@ void AvlTree<Comparable>::doubleWithRightChild( AvlNode<Comparable> * & k1 ) con
  * t points to the node that roots the tree.
  */
 template <class Comparable>
-void AvlTree<Comparable>::printTree( AvlNode<Comparable> *t ) const
+void AvlTree<Comparable>::printTree(AvlNode<Comparable> *t) const
 {
-    if( t != NULL )
+    if (t != NULL)
     {
-        printTree( t->left );
+        printTree(t->left);
         cout << t->element << endl;
-        printTree( t->right );
+        printTree(t->right);
     }
 }
