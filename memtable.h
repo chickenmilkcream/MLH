@@ -8,8 +8,7 @@ using namespace std;
 
 typedef uint64_t db_key_t;
 typedef uint64_t db_val_t;
-
-class AvlNode;
+typedef uint32_t db_size_t;
 
 class AVLNode
 {
@@ -18,7 +17,7 @@ class AVLNode
     db_val_t val;
     AVLNode *left;
     AVLNode *right;
-    AVLNode *parent;
+    db_size_t height;
 
     AVLNode(db_key_t key, db_val_t val);
     void put(db_key_t key, db_val_t val);
@@ -28,6 +27,8 @@ class AVLNode
       db_key_t max_key,
       vector<pair<db_key_t, db_val_t>> &pairs
     );
+    AVLNode * rotate_left();
+    AVLNode * rotate_right();
 };
 
 class AVLTree
@@ -44,11 +45,11 @@ class AVLTree
 class Memtable
 {
   public:
-    uint8_t max_size;
-    uint8_t size;
+    db_size_t max_size;
+    db_size_t size;
     AVLTree tree;
 
-    Memtable(uint8_t memtable_size);
+    Memtable(db_size_t memtable_size);
     void put(db_key_t key, db_val_t val);
     db_val_t get(db_key_t key);
     vector<pair<db_key_t, db_val_t>> scan(db_key_t min_key, db_key_t max_key);
