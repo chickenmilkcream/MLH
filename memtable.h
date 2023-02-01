@@ -2,6 +2,7 @@
 #define MEMTABLE_H
 
 #include <cstdint>
+#include <string>
 #include <vector>
 
 using namespace std;
@@ -18,12 +19,13 @@ class AVLNode {
   unsigned int height;
 
   AVLNode(db_key_t key, db_val_t val);
+  AVLNode *rotate_left();
+  AVLNode *rotate_right();
   AVLNode *put(db_key_t key, db_val_t val);
   db_val_t get(db_key_t key);
   void scan(db_key_t min_key, db_key_t max_key,
             vector<pair<db_key_t, db_val_t>> &pairs);
-  AVLNode *rotate_left();
-  AVLNode *rotate_right();
+  void print(string prefix, bool is_left);
 };
 
 class AVLTree {
@@ -34,6 +36,7 @@ class AVLTree {
   void put(db_key_t key, db_val_t val);
   db_val_t get(db_key_t key);
   vector<pair<db_key_t, db_val_t>> scan(db_key_t min_key, db_key_t max_key);
+  void print();
 };
 
 class Memtable {
@@ -46,6 +49,7 @@ class Memtable {
   void put(db_key_t key, db_val_t val);
   db_val_t get(db_key_t key);
   vector<pair<db_key_t, db_val_t>> scan(db_key_t min_key, db_key_t max_key);
+  void print();
 };
 
 #endif
