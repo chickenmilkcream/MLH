@@ -2,35 +2,56 @@
 #define MEMTABLE_H
 
 #include <cstdint>
-#include "avl_tree.h"
+#include <vector>
 
-class Entry
+using namespace std;
+
+typedef uint64_t db_key_t;
+typedef uint64_t db_val_t;
+
+class AvlNode;
+
+class AVLNode
 {
-public:
-    Entry *left;
-    Entry *right;
-    Entry *parent;
-    uint32_t key;
-    uint32_t val;
+  public:
+    db_key_t key;
+    db_val_t val;
+    AVLNode *left;
+    AVLNode *right;
+    AVLNode *parent;
+
+    AVLNode(db_key_t key, db_val_t val);
+    void put(db_key_t key, db_val_t val);
+    db_val_t get(db_key_t key);
+    void scan(
+      db_key_t min_key,
+      db_key_t max_key,
+      vector<pair<db_key_t, db_val_t>> &pairs
+    );
+};
+
+class AVLTree
+{
+  public:
+    AVLNode *root;
+
+    AVLTree();
+    void put(db_key_t key, db_val_t val);
+    db_val_t get(db_key_t key);
+    vector<pair<db_key_t, db_val_t>> scan(db_key_t min_key, db_key_t max_key);
 };
 
 class Memtable
 {
-public:
-    Memtable(uint32_t memtable_size);
-    uint64_t get(uint64_t key);
-    void put(uint64_t key, uint64_t val);
-    void scan(uint64_t min_key, uint64_t max_key);
+  public:
+    uint8_t max_size;
+    uint8_t size;
+    AVLTree tree;
 
-private:
-    uint32_t memtable_size;
-    uint32_t current_size;
-    Entry root;
-
-    // helpers for recursion
-    uint64_t get_helper(Entry root, uint64_t key);
-    void put_helper(Entry root, uint64_t key, uint64_t val);
-    void scan_helper(Entry root, uint64_t min_key, uint64_t max_key);
+    Memtable(uint8_t memtable_size);
+    void put(db_key_t key, db_val_t val);
+    db_val_t get(db_key_t key);
+    vector<pair<db_key_t, db_val_t>> scan(db_key_t min_key, db_key_t max_key);
 };
 
 #endif
