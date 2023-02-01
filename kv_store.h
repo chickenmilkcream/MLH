@@ -10,7 +10,7 @@ using namespace std;
 class KeyValueStore
 {
     public:        
-        explicit KeyValueStore(uint32_t memtable_size);
+        KeyValueStore(uint32_t memtable_size) : memtable(memtable_size){};
         void open(string db);
         void close();
         uint64_t get(uint64_t key);
@@ -19,6 +19,7 @@ class KeyValueStore
 
     private:
         Memtable memtable;
+        int num_sst;
         void serialize();
 };
 

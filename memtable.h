@@ -41,6 +41,12 @@ class AVLTree
     vector<pair<db_key_t, db_val_t>> scan(db_key_t min_key, db_key_t max_key);
 };
 
+class SST {
+    string name;
+    SST(string name);
+    vector<pair<db_key_t, db_val_t>> scan(db_key_t min_key, db_key_t max_key);
+};
+
 class Memtable
 {
   public:
@@ -48,7 +54,7 @@ class Memtable
     uint8_t size;
     AVLTree tree;
 
-    Memtable(uint8_t memtable_size);
+    explicit Memtable(uint8_t memtable_size);
     void put(db_key_t key, db_val_t val);
     db_val_t get(db_key_t key);
     vector<pair<db_key_t, db_val_t>> scan(db_key_t min_key, db_key_t max_key);
