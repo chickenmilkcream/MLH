@@ -38,6 +38,32 @@ AVLNode *AVLNode::rotate_right() {
   return left;
 }
 
+bool AVLNode::has(db_key_t key) {
+  if (this->key > key) {
+    if (this->left) {
+      return this->left->has(key);
+    }
+    return false;
+  }
+  if (this->key < key) {
+    if (this->right) {
+      return this->right->has(key);
+    }
+    return false;
+  }
+  return true;
+}
+
+db_val_t AVLNode::get(db_key_t key) {
+  if (this->key > key) {
+    return this->left->get(key);
+  }
+  if (this->key < key) {
+    return this->right->get(key);
+  }
+  return this->val;
+}
+
 AVLNode *AVLNode::put(db_key_t key, db_val_t val) {
   if (this->key > key) {
     if (!this->left) {
@@ -81,16 +107,6 @@ AVLNode *AVLNode::put(db_key_t key, db_val_t val) {
   return this;
 }
 
-db_val_t AVLNode::get(db_key_t key) {
-  if (this->key > key) {
-    return this->left->get(key);
-  }
-  if (this->key < key) {
-    return this->right->get(key);
-  }
-  return this->val;
-}
-
 void AVLNode::scan(db_key_t min_key, db_key_t max_key,
                    vector<pair<db_key_t, db_val_t>> &pairs) {
   if (this->key > min_key) {
@@ -110,7 +126,8 @@ void AVLNode::scan(db_key_t min_key, db_key_t max_key,
   }
 }
 
-// modified from https://stackoverflow.com/questions/36802354/print-binary-tree-in-a-pretty-way-using-c
+// modified from
+// https://stackoverflow.com/questions/36802354/print-binary-tree-in-a-pretty-way-using-c
 void AVLNode::print(string prefix, bool is_left) {
   cout << prefix + (is_left ? "├──" : "└──") << "(" << this->key << ":"
        << this->val << ")" << endl;
@@ -129,12 +146,11 @@ void AVLNode::print(string prefix, bool is_left) {
 
 AVLTree::AVLTree() { this->root = NULL; }
 
-void AVLTree::put(db_key_t key, db_val_t val) {
-  if (!this->root) {
-    this->root = new AVLNode(key, val);
-  } else {
-    this->root->put(key, val);
+bool AVLTree::has(db_key_t key) {
+  if (this->root) {
+    return this->root->has(key);
   }
+  return false;
 }
 
 db_val_t AVLTree::get(db_key_t key) {
@@ -146,13 +162,19 @@ db_val_t AVLTree::get(db_key_t key) {
   }
 }
 
-vector<pair<db_key_t, db_val_t>> AVLTree::scan(db_key_t min_key,
-                                               db_key_t max_key) {
-  vector<pair<db_key_t, db_val_t>> pairs;
+void AVLTree::put(db_key_t key, db_val_t val) {
+  if (!this->root) {
+    this->root = new AVLNode(key, val);
+  } else {
+    this->root->put(key, val);
+  }
+}
+
+void AVLTree::scan(db_key_t min_key, db_key_t max_key,
+                   vector<pair<db_key_t, db_val_t>> &pairs) {
   if (this->root) {
     this->root->scan(min_key, max_key, pairs);
   }
-  return pairs;
 }
 
 void AVLTree::print() {
@@ -169,13 +191,18 @@ Memtable::Memtable(unsigned int memtable_size) {
   this->tree = AVLTree();
 }
 
-void Memtable::put(db_key_t key, db_val_t val) { this->tree.put(key, val); }
-
 db_val_t Memtable::get(db_key_t key) { return this->tree.get(key); }
 
-vector<pair<db_key_t, db_val_t>> Memtable::scan(db_key_t min_key,
-                                                db_key_t max_key) {
-  return this->tree.scan(min_key, max_key);
+void Memtable::put(db_key_t key, db_val_t val) {
+  if (!this->tree.has(key)) {
+    this->size += 16;  // 16 bytes per key-value pair
+  }
+  this->tree.put(key, val);
+}
+
+void Memtable::scan(db_key_t min_key, db_key_t max_key,
+                    vector<pair<db_key_t, db_val_t>> &pairs) {
+  this->tree.scan(min_key, max_key, pairs);
 }
 
 void Memtable::print() { this->tree.print(); }
@@ -192,18 +219,12 @@ int main() {
   mt.put(3, 0);
   mt.put(10, 1);
   mt.put(11, 17);
+  mt.print();
 
-  // cout << mt.get(5) << endl;
-  // cout << mt.get(2) << endl;
-  // cout << mt.get(1) << endl;
-  // cout << mt.get(9) << endl;
-  // cout << mt.get(6) << endl;
-
-  //   vector<pair<db_key_t, db_val_t>> pairs = mt.scan(0, 999);
+  //   vector<pair<db_key_t, db_val_t>> pairs;
+  //   mt.scan(0, 999, pairs);
   //   cout << "size: " << pairs.size() << endl;
   //   for (pair<db_key_t, db_val_t> pair : pairs) {
   //     cout << pair.first << ", " << pair.second << endl;
   //   }
-
-  mt.print();
 }
