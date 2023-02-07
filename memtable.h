@@ -2,6 +2,7 @@
 #define MEMTABLE_H
 
 #include <cstdint>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -43,7 +44,7 @@ class AVLTree {
   void print();
 
  private:
-  AVLNode *root;
+  unique_ptr<AVLNode> root;
 };
 
 class Memtable {

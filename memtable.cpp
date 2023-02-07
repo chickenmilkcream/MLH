@@ -2,16 +2,12 @@
 
 #include <cmath>
 #include <iostream>
-#include <string>
-#include <vector>
 
 using namespace std;
 
 AVLNode::AVLNode(db_key_t key, db_val_t val) {
   this->key = key;
   this->val = val;
-  this->left = NULL;
-  this->right = NULL;
   this->height = 1;
 }
 
@@ -144,7 +140,7 @@ void AVLNode::print(string prefix, bool is_left) {
   }
 }
 
-AVLTree::AVLTree() { this->root = NULL; }
+AVLTree::AVLTree() {}
 
 bool AVLTree::has(db_key_t key) {
   if (this->root) {
@@ -164,7 +160,7 @@ db_val_t AVLTree::get(db_key_t key) {
 
 void AVLTree::put(db_key_t key, db_val_t val) {
   if (!this->root) {
-    this->root = new AVLNode(key, val);
+    this->root = make_unique<AVLNode>(key, val);
   } else {
     this->root->put(key, val);
   }
