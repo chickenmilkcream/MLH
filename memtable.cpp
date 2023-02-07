@@ -7,7 +7,8 @@
 
 using namespace std;
 
-AVLNode::AVLNode(db_key_t key, db_val_t val) {
+AVLNode::AVLNode(db_key_t key, db_val_t val)
+{
   this->key = key;
   this->val = val;
   this->left = NULL;
@@ -15,7 +16,8 @@ AVLNode::AVLNode(db_key_t key, db_val_t val) {
   this->height = 1;
 }
 
-AVLNode *AVLNode::rotate_left() {
+AVLNode *AVLNode::rotate_left()
+{
   AVLNode *right = this->right;
   this->right = right->left;
   right->left = this;
@@ -27,7 +29,8 @@ AVLNode *AVLNode::rotate_left() {
   return right;
 }
 
-AVLNode *AVLNode::rotate_right() {
+AVLNode *AVLNode::rotate_right()
+{
   AVLNode *left = this->left;
   this->left = left->right;
   left->right = this;
@@ -38,15 +41,20 @@ AVLNode *AVLNode::rotate_right() {
   return left;
 }
 
-bool AVLNode::has(db_key_t key) {
-  if (this->key > key) {
-    if (this->left) {
+bool AVLNode::has(db_key_t key)
+{
+  if (this->key > key)
+  {
+    if (this->left)
+    {
       return this->left->has(key);
     }
     return false;
   }
-  if (this->key < key) {
-    if (this->right) {
+  if (this->key < key)
+  {
+    if (this->right)
+    {
       return this->right->has(key);
     }
     return false;
@@ -54,31 +62,46 @@ bool AVLNode::has(db_key_t key) {
   return true;
 }
 
-db_val_t AVLNode::get(db_key_t key) {
-  if (this->key > key) {
+db_val_t AVLNode::get(db_key_t key)
+{
+  if (this->key > key)
+  {
     return this->left->get(key);
   }
-  if (this->key < key) {
+  if (this->key < key)
+  {
     return this->right->get(key);
   }
   return this->val;
 }
 
-AVLNode *AVLNode::put(db_key_t key, db_val_t val) {
-  if (this->key > key) {
-    if (!this->left) {
+AVLNode *AVLNode::put(db_key_t key, db_val_t val)
+{
+  if (this->key > key)
+  {
+    if (!this->left)
+    {
       this->left = new AVLNode(key, val);
-    } else {
+    }
+    else
+    {
       this->left = this->left->put(key, val);
     }
-  } else if (this->key < key) {
-    if (!this->right) {
+  }
+  else if (this->key < key)
+  {
+    if (!this->right)
+    {
       this->right = new AVLNode(key, val);
-    } else {
+    }
+    else
+    {
       this->right = this->right->put(key, val);
     }
-  } else {
-    this->val = val;  // already exists
+  }
+  else
+  {
+    this->val = val; // already exists
     return this;
   }
 
@@ -89,17 +112,21 @@ AVLNode *AVLNode::put(db_key_t key, db_val_t val) {
   int balance = (this->left ? this->left->height : 0) -
                 (this->right ? this->right->height : 0);
 
-  if (balance < -1 && this->right->key < key) {
+  if (balance < -1 && this->right->key < key)
+  {
     return this->rotate_left();
   }
-  if (balance < -1 && this->right->key > key) {
+  if (balance < -1 && this->right->key > key)
+  {
     this->right = this->right->rotate_right();
     return this->rotate_left();
   }
-  if (balance > 1 && this->left->key > key) {
+  if (balance > 1 && this->left->key > key)
+  {
     return this->rotate_right();
   }
-  if (balance > 1 && this->left->key < key) {
+  if (balance > 1 && this->left->key < key)
+  {
     this->left = this->left->rotate_left();
     return this->rotate_right();
   }
@@ -108,19 +135,25 @@ AVLNode *AVLNode::put(db_key_t key, db_val_t val) {
 }
 
 void AVLNode::scan(db_key_t min_key, db_key_t max_key,
-                   vector<pair<db_key_t, db_val_t>> &pairs) {
-  if (this->key > min_key) {
-    if (this->left) {
+                   vector<pair<db_key_t, db_val_t> > &pairs)
+{
+  if (this->key > min_key)
+  {
+    if (this->left)
+    {
       this->left->scan(min_key, max_key, pairs);
     }
   }
-  if (this->key >= min_key && this->key <= max_key) {
+  if (this->key >= min_key && this->key <= max_key)
+  {
     pair<db_key_t, db_val_t> pair;
     pair = make_pair(this->key, this->val);
     pairs.push_back(pair);
   }
-  if (this->key < max_key) {
-    if (this->right) {
+  if (this->key < max_key)
+  {
+    if (this->right)
+    {
       this->right->scan(min_key, max_key, pairs);
     }
   }
@@ -128,64 +161,87 @@ void AVLNode::scan(db_key_t min_key, db_key_t max_key,
 
 // modified from
 // https://stackoverflow.com/questions/36802354/print-binary-tree-in-a-pretty-way-using-c
-void AVLNode::print(string prefix, bool is_left) {
+void AVLNode::print(string prefix, bool is_left)
+{
   cout << prefix + (is_left ? "├──" : "└──") << "(" << this->key << ":"
        << this->val << ")" << endl;
 
-  if (this->left) {
+  if (this->left)
+  {
     this->left->print(prefix + (is_left ? "│   " : "    "), true);
-  } else {
+  }
+  else
+  {
     cout << prefix + (is_left ? "│   ├──NULL" : "    ├──NULL") << endl;
   }
-  if (this->right) {
+  if (this->right)
+  {
     this->right->print(prefix + (is_left ? "│   " : "    "), false);
-  } else {
+  }
+  else
+  {
     cout << prefix + (is_left ? "│   └──NULL" : "    └──NULL") << endl;
   }
 }
 
 AVLTree::AVLTree() { this->root = NULL; }
 
-bool AVLTree::has(db_key_t key) {
-  if (this->root) {
+bool AVLTree::has(db_key_t key)
+{
+  if (this->root)
+  {
     return this->root->has(key);
   }
   return false;
 }
 
-db_val_t AVLTree::get(db_key_t key) {
-  if (this->root) {
-    if (this->root->key == key) {
+db_val_t AVLTree::get(db_key_t key)
+{
+  if (this->root)
+  {
+    if (this->root->key == key)
+    {
       return this->root->val;
     }
     return this->root->get(key);
   }
 }
 
-void AVLTree::put(db_key_t key, db_val_t val) {
-  if (!this->root) {
+void AVLTree::put(db_key_t key, db_val_t val)
+{
+  if (!this->root)
+  {
     this->root = new AVLNode(key, val);
-  } else {
+  }
+  else
+  {
     this->root->put(key, val);
   }
 }
 
 void AVLTree::scan(db_key_t min_key, db_key_t max_key,
-                   vector<pair<db_key_t, db_val_t>> &pairs) {
-  if (this->root) {
+                   vector<pair<db_key_t, db_val_t> > &pairs)
+{
+  if (this->root)
+  {
     this->root->scan(min_key, max_key, pairs);
   }
 }
 
-void AVLTree::print() {
-  if (this->root) {
+void AVLTree::print()
+{
+  if (this->root)
+  {
     this->root->print("", false);
-  } else {
+  }
+  else
+  {
     cout << endl;
   }
 }
 
-Memtable::Memtable(unsigned int memtable_size) {
+Memtable::Memtable(unsigned int memtable_size)
+{
   this->max_size = memtable_size;
   this->size = 0;
   this->tree = AVLTree();
@@ -193,21 +249,25 @@ Memtable::Memtable(unsigned int memtable_size) {
 
 db_val_t Memtable::get(db_key_t key) { return this->tree.get(key); }
 
-void Memtable::put(db_key_t key, db_val_t val) {
-  if (!this->tree.has(key)) {
-    this->size += 16;  // 16 bytes per key-value pair
+void Memtable::put(db_key_t key, db_val_t val)
+{
+  if (!this->tree.has(key))
+  {
+    this->size += 16; // 16 bytes per key-value pair
   }
   this->tree.put(key, val);
 }
 
 void Memtable::scan(db_key_t min_key, db_key_t max_key,
-                    vector<pair<db_key_t, db_val_t>> &pairs) {
+                    vector<pair<db_key_t, db_val_t> > &pairs)
+{
   this->tree.scan(min_key, max_key, pairs);
 }
 
 void Memtable::print() { this->tree.print(); }
 
-int main() {
+int main()
+{
   // test cases
   Memtable mt = Memtable(108);
   mt.put(5, 1);
