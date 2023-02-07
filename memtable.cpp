@@ -12,11 +12,11 @@ AVLNode::AVLNode(db_key_t key, db_val_t val)
   this->height = 1;
 }
 
-AVLNode *AVLNode::rotate_left()
+shared_ptr<AVLNode> AVLNode::rotate_left()
 {
-  AVLNode *right = this->right;
+  shared_ptr<AVLNode> right = this->right;
   this->right = right->left;
-  right->left = this;
+  right->left = shared_from_this();
   this->height = max(this->left ? this->left->height : 0,
                      this->right ? this->right->height : 0) +
                  1;
@@ -25,11 +25,11 @@ AVLNode *AVLNode::rotate_left()
   return right;
 }
 
-AVLNode *AVLNode::rotate_right()
+shared_ptr<AVLNode> AVLNode::rotate_right()
 {
-  AVLNode *left = this->left;
+  shared_ptr<AVLNode> left = this->left;
   this->left = left->right;
-  left->right = this;
+  left->right = shared_from_this();
   this->height = max(this->left ? this->left->height : 0,
                      this->right ? this->right->height : 0) +
                  1;
@@ -71,13 +71,13 @@ db_val_t AVLNode::get(db_key_t key)
   return this->val;
 }
 
-AVLNode *AVLNode::put(db_key_t key, db_val_t val)
+shared_ptr<AVLNode> AVLNode::put(db_key_t key, db_val_t val)
 {
   if (this->key > key)
   {
     if (!this->left)
     {
-      this->left = new AVLNode(key, val);
+      this->left = make_shared<AVLNode>(key, val);
     }
     else
     {
@@ -88,7 +88,7 @@ AVLNode *AVLNode::put(db_key_t key, db_val_t val)
   {
     if (!this->right)
     {
-      this->right = new AVLNode(key, val);
+      this->right = make_shared<AVLNode>(key, val);
     }
     else
     {
@@ -98,7 +98,7 @@ AVLNode *AVLNode::put(db_key_t key, db_val_t val)
   else
   {
     this->val = val; // already exists
-    return this;
+    return shared_from_this();
   }
 
   this->height = max(this->left ? this->left->height : 0,
@@ -127,7 +127,7 @@ AVLNode *AVLNode::put(db_key_t key, db_val_t val)
     return this->rotate_right();
   }
 
-  return this;
+  return shared_from_this();
 }
 
 void AVLNode::scan(db_key_t min_key, db_key_t max_key,
@@ -207,7 +207,7 @@ void AVLTree::put(db_key_t key, db_val_t val)
 {
   if (!this->root)
   {
-    this->root = make_unique<AVLNode>(key, val);
+    this->root = make_shared<AVLNode>(key, val);
   }
   else
   {
@@ -264,7 +264,6 @@ void Memtable::print() { this->tree.print(); }
 
 int main()
 {
-  // test cases
   Memtable mt = Memtable(108);
   mt.put(5, 1);
   mt.put(6, 3);
@@ -276,11 +275,4 @@ int main()
   mt.put(10, 1);
   mt.put(11, 17);
   mt.print();
-
-  //   vector<pair<db_key_t, db_val_t>> pairs;
-  //   mt.scan(0, 999, pairs);
-  //   cout << "size: " << pairs.size() << endl;
-  //   for (pair<db_key_t, db_val_t> pair : pairs) {
-  //     cout << pair.first << ", " << pair.second << endl;
-  //   }
 }
