@@ -20,11 +20,16 @@ uint64_t KeyValueStore::get(uint64_t key)
 
 void KeyValueStore::put(uint64_t key, uint64_t val)
 {
+    this->memtable.put(key, val);
 }
 
-void KeyValueStore::scan(uint64_t min_key, uint64_t max_key)
-{
+
+vector<pair<db_key_t, db_val_t>>
+KeyValueStore::scan(db_key_t min_key, db_key_t max_key) {
+    return this->memtable.scan(min_key, max_key);
 }
+
+
 
 void KeyValueStore::serialize()
 {
@@ -67,4 +72,5 @@ void KeyValueStore::serialize()
 //    return 0;
 
 }
+
 

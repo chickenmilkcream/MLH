@@ -236,7 +236,7 @@ void AVLTree::print()
   }
 }
 
-Memtable::Memtable(unsigned int memtable_size)
+Memtable::Memtable(uint64_t memtable_size)
 {
   this->max_size = memtable_size;
   this->size = 0;
@@ -254,25 +254,30 @@ void Memtable::put(db_key_t key, db_val_t val)
   this->tree.put(key, val);
 }
 
-void Memtable::scan(db_key_t min_key, db_key_t max_key,
-                    vector<pair<db_key_t, db_val_t> > &pairs)
+vector<pair<db_key_t, db_val_t>> Memtable::scan(db_key_t min_key, db_key_t max_key)
 {
-  this->tree.scan(min_key, max_key, pairs);
+    vector<pair<db_key_t, db_val_t>> pairs;
+    this->tree.scan(min_key, max_key, pairs);
+    return pairs;
 }
 
 void Memtable::print() { this->tree.print(); }
 
+
+
+}
+
 int main()
 {
-  Memtable mt = Memtable(108);
-  mt.put(5, 1);
-  mt.put(6, 3);
-  mt.put(2, 8);
-  mt.put(1, 9);
-  mt.put(1, 7);
-  mt.put(9, 8);
-  mt.put(3, 0);
-  mt.put(10, 1);
-  mt.put(11, 17);
-  mt.print();
+//  Memtable mt = Memtable(108);
+//  mt.put(5, 1);
+//  mt.put(6, 3);
+//  mt.put(2, 8);
+//  mt.put(1, 9);
+//  mt.put(1, 7);
+//  mt.put(9, 8);
+//  mt.put(3, 0);
+//  mt.put(10, 1);
+//  mt.put(11, 17);
+//  mt.print();
 }
