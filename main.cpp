@@ -22,18 +22,10 @@
 #include "memtable.h"
 
 int main(int argc, char *argv[])
-{
-    std::cout << "Hello World" << std::endl;
-    
+{       
+    Memtable mt = Memtable(10);
+    assert(mt.max_size == 10);
 
-    KeyValueStore kv_store = KeyValueStore(69420);
-
-    kv_store.put((db_key_t)69, (db_val_t)1);
-
-    // return argc == 3 ? EXIT_SUCCESS : EXIT_FAILURE; // optional return value
-
-        
-    Memtable mt = Memtable(108);
     mt.put(5, 1);
     mt.put(6, 3);
     mt.put(2, 8);
@@ -45,22 +37,53 @@ int main(int argc, char *argv[])
     mt.put(11, 17);
     mt.print();
 
-    std::cout << mt.get(5) << std::endl;
-    std::cout << mt.get(6) << std::endl;
-    std::cout << mt.get(2) << std::endl;
-    std::cout << mt.get(1) << std::endl;
-    std::cout << mt.get(1) << std::endl;
-    std::cout << mt.get(9) << std::endl;
-    std::cout << mt.get(3) << std::endl;
-    std::cout << mt.get(10) << std::endl;
-    std::cout << mt.get(11) << std::endl;
-
-    vector<pair<db_key_t, db_val_t> > mt_vector = mt.scan(4, 10);
-    for (pair<db_key_t, db_val_t> pair : mt_vector)
-    {
-        cout << pair.first << ", " << pair.second << endl;
+    // Testing the get functionality
+    assert(mt.get(5) == 1);
+    assert(mt.get(6) == 3);
+    assert(mt.get(2) == 8);
+    assert(mt.get(1) == 7);
+    assert(mt.get(9) == 8);
+    assert(mt.get(3) == 0);
+    assert(mt.get(10) == 1);
+    assert(mt.get(11) == 17);
+    try { // making sure that invalid_argument is thrown when trying to retrieve non existent key
+        mt.get(-100);
+        assert(false);
+    } catch(invalid_argument e) {
     }
-    cout << "size: " << mt_vector.size() << endl;
+
+    // Testing the scan functionality
+
+    // Testing normal scan
+    vector<pair<db_key_t, db_val_t> > mt_vector = mt.scan(4, 10);
+    vector<pair<db_key_t, db_val_t> > expected_vector;
+    expected_vector.push_back(pair<db_key_t, db_val_t>(5, 1));
+    expected_vector.push_back(pair<db_key_t, db_val_t>(6, 3));
+    expected_vector.push_back(pair<db_key_t, db_val_t>(9, 8));
+    expected_vector.push_back(pair<db_key_t, db_val_t>(10, 1));
+
+    assert(mt_vector.size() == 4);
+    assert(mt_vector == expected_vector);
+    expected_vector.clear();
+    mt_vector.clear();
+
+    // Testing scan of 1 element
+    mt_vector = mt.scan(10, 10);
+    expected_vector.push_back(pair<db_key_t, db_val_t>(10, 1));
+
+    assert(mt_vector.size() == 1);
+    assert(mt_vector == expected_vector);
+    expected_vector.clear();
+    mt_vector.clear();
+
+    // Testing scan of 0 elements
+    mt_vector = mt.scan(11, 10);
+
+    assert(mt_vector.size() == 0);
+    assert(mt_vector == expected_vector);
+
+    // Testing the serialize functionality
+    // todo: jason you got this I believe in you
 
     // std::ofstream outputFile("sst_1.bin", std::ios::binary);
     // for (const auto &p : mt_vector)
