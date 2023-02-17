@@ -110,14 +110,3 @@ void KeyValueStore::serialize()
     //
     //    return 0;
 }
-
-int main(int argc, char *argv[])
-{
-    std::cout << "Hello World" << std::endl;
-
-    KeyValueStore kv_store = KeyValueStore((uint64_t)69420);
-
-    kv_store.put((db_key_t)69, (db_val_t)1);
-
-    // return argc == 3 ? EXIT_SUCCESS : EXIT_FAILURE; // optional return value
-}

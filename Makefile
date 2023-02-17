@@ -1,19 +1,14 @@
 CC := g++
 CFLAGS := -Wall -g
+OBJFILES := main.o kv_store.o memtable.o
 
-all: clean kv_store memtable
+all: main
 
-avlnode: avlnode.cpp
-	$(CC) -o avlnode avlnode.cpp
+main: $(OBJFILES)
+	$(CC) $(CFLAGS) -o main $(OBJFILES)
 
-memtable: memtable.cpp
-	$(CC) -o memtable memtable.cpp
-
-kv_store: kv_store.cpp
-	$(CC) -o kv_store kv_store.cpp
-
-main: main.cpp
-	$(CC) -o main main.cpp
+%.o: %.cpp %.h
+	$(CC) $(CFLAGS) -c $<
 
 clean:
-	rm -rf *.o memtable
+	rm -f *.o main
