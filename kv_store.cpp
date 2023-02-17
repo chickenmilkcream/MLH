@@ -5,72 +5,119 @@
 #include <vector>
 #include <utility>
 #include <fstream>
-void KeyValueStore::open(string db)
+#include <fcntl.h>
+#include <unistd.h>
+#include <fcntl.h>
+
+using namespace std;
+
+KeyValueStore::KeyValueStore(uint64_t memtable_size)
+{
+    this->memtable = Memtable(memtable_size);
+    this->num_sst = 1;
+    this->memtable_size = memtable_size;
+}
+
+void KeyValueStore::kv_open(string db)
+{
+    // todo load all SSTs i think...
+}
+
+void KeyValueStore::kv_close()
 {
 }
 
-void KeyValueStore::close()
+db_val_t KeyValueStore::get(db_key_t key)
 {
+    try
+    {
+        return this->memtable.get(key);
+    }
+    catch (std::invalid_argument &e)
+    {
+        cerr << e.what() << endl;
+    }
+    // todo check SSTs
 }
 
-uint64_t KeyValueStore::get(uint64_t key)
+void KeyValueStore::put(db_key_t key, db_val_t val)
 {
-    return 0;
-}
-
-void KeyValueStore::put(uint64_t key, uint64_t val)
-{
+    this->memtable.size ++;
     this->memtable.put(key, val);
+    // todo talk to json about increasing capacity and then calling serialize
+    if (this->memtable.size == this->memtable.max_size) { 
+        this->serialize();
+        this->num_sst += 1;
+    }
 }
 
-
-vector<pair<db_key_t, db_val_t>>
-KeyValueStore::scan(db_key_t min_key, db_key_t max_key) {
+vector<pair<db_key_t, db_val_t> > KeyValueStore::scan(db_key_t min_key, db_key_t max_key)
+{
     return this->memtable.scan(min_key, max_key);
 }
 
+void KeyValueStore::write_to_file(vector<pair<db_key_t, db_val_t> > vector_mt){
+    std::string s = "sst_" + to_string(this->num_sst) + ".bin";
+    const char * filename = s.c_str();
+    // std::ofstream outputFile(filename, std::ios::binary);
+    // for (const auto &p : vector_mt)
+    // {
+    //     outputFile.write((char *)&p, sizeof(p));
+    // }
 
+    int fd = open(filename, O_CREAT | O_WRONLY | O_TRUNC);
+    ssize_t nwritten = pwrite(fd, &vector_mt, sizeof(vector_mt), -1);
+    if (nwritten != sizeof(vector_mt))
+    {
+        cerr << "Error writing to file." << endl;
+        return;
+    }
+
+    // for (auto &p : vector_mt)
+    // {
+    //     ssize_t nwritten = pwrite(fd, &p, sizeof(p), -1);
+    //     if (nwritten != sizeof(p)) {
+    //         cerr << "Error writing to file." << endl;
+    //         return;
+    //     }
+    // }
+
+    close(fd);
+}
 
 void KeyValueStore::serialize()
 {
-    vector<pair<db_key_t, db_val_t>> vector_mt = this->memtable.scan(-999999999, 999999999);
-    string filename = "sst_" + to_string(num_sst) + ".bin";
-    std::ofstream outputFile("sst_1.bin", std::ios::binary);
-    for (const auto &p: vector_mt) {
-        outputFile.write((char *) &p, sizeof(p));
-    }
-    outputFile.close();
+    vector<pair<db_key_t, db_val_t> > vector_mt = this->memtable.scan((uint64_t)-999999999, (uint64_t)999999999);
+    this->write_to_file(vector_mt);
+    // TODO: free memtable 
+    // delete this->memtable;
+    this->memtable = Memtable(this->memtable_size);
 
-//    vector<pair<db_key_t, db_val_t>> mt_vector = mt.scan(0, 999);
-//    for (pair<db_key_t, db_val_t> pair: mt_vector) {
-//        cout << pair.first << ", " << pair.second << endl;
-//    }
-//    cout << "size: " << mt_vector.size() << endl;
-//
-//
-//    std::ofstream outputFile("sst_1.bin", std::ios::binary);
-//    for (const auto &p: mt_vector) {
-//        outputFile.write((char *) &p, sizeof(p));
-//    }
-//    outputFile.close();
-//
-//
-//    vector<std::pair<int, int>> vec;
-//    ifstream inputFile("sst_1.bin", ios::binary);
-//
-//    while (inputFile.good()) {
-//        pair < db_key_t, db_val_t > p;
-//        inputFile.read((char *) &p, sizeof(p));
-//        vec.emplace_back(p);
-//    }
-//    inputFile.close();
-//
-//    for (const auto &p: vec) {
-//        cout << p.first << " " << p.second << endl;
-//    }
-//
-//    return 0;
 
+    //    vector<std::pair<int, int>> vec;
+    //    ifstream inputFile("sst_1.bin", ios::binary);
+    //
+    //    while (inputFile.good()) {
+    //        pair < db_key_t, db_val_t > p;
+    //        inputFile.read((char *) &p, sizeof(p));
+    //        vec.emplace_back(p);
+    //    }
+    //    inputFile.close();
+    //
+    //    for (const auto &p: vec) {
+    //        cout << p.first << " " << p.second << endl;
+    //    }
+    //
+    //    return 0;
 }
 
+int main(int argc, char *argv[])
+{
+    std::cout << "Hello World" << std::endl;
 
+    KeyValueStore kv_store = KeyValueStore((uint64_t)69420);
+
+    kv_store.put((db_key_t)69, (db_val_t)1);
+
+    // return argc == 3 ? EXIT_SUCCESS : EXIT_FAILURE; // optional return value
+}

@@ -1,3 +1,4 @@
+// #include "avlnode.h"
 #include "memtable.h"
 
 #include <cmath>
@@ -62,11 +63,21 @@ db_val_t AVLNode::get(db_key_t key)
 {
   if (this->key > key)
   {
-    return this->left->get(key);
+    if (this->left)
+    {
+      return this->left->get(key);
+    }
+    throw std::invalid_argument("Key not found");
+    return 69420;
   }
   if (this->key < key)
   {
-    return this->right->get(key);
+    if (this->right)
+    {
+      return this->right->get(key);
+    }
+    throw std::invalid_argument("Key not found");
+    return 69420;
   }
   return this->val;
 }
@@ -180,7 +191,8 @@ void AVLNode::print(string prefix, bool is_left)
   }
 }
 
-AVLTree::AVLTree() {}
+AVLTree::AVLTree() {
+}
 
 bool AVLTree::has(db_key_t key)
 {
@@ -201,6 +213,7 @@ db_val_t AVLTree::get(db_key_t key)
     }
     return this->root->get(key);
   }
+  return -1;
 }
 
 void AVLTree::put(db_key_t key, db_val_t val)
@@ -254,30 +267,54 @@ void Memtable::put(db_key_t key, db_val_t val)
   this->tree.put(key, val);
 }
 
-vector<pair<db_key_t, db_val_t>> Memtable::scan(db_key_t min_key, db_key_t max_key)
+vector<pair<db_key_t, db_val_t> > Memtable::scan(db_key_t min_key, db_key_t max_key)
 {
-    vector<pair<db_key_t, db_val_t>> pairs;
-    this->tree.scan(min_key, max_key, pairs);
-    return pairs;
+  vector<pair<db_key_t, db_val_t> > pairs;
+  this->tree.scan(min_key, max_key, pairs);
+  return pairs;
 }
 
 void Memtable::print() { this->tree.print(); }
 
-
-
-}
-
 int main()
 {
-//  Memtable mt = Memtable(108);
-//  mt.put(5, 1);
-//  mt.put(6, 3);
-//  mt.put(2, 8);
-//  mt.put(1, 9);
-//  mt.put(1, 7);
-//  mt.put(9, 8);
-//  mt.put(3, 0);
-//  mt.put(10, 1);
-//  mt.put(11, 17);
-//  mt.print();
+  // todo move this to tests
+  // todo add docs
+  // todo separate into files
+
+  Memtable mt = Memtable(108);
+  mt.put(5, 1);
+  mt.put(6, 3);
+  mt.put(2, 8);
+  mt.put(1, 9);
+  mt.put(1, 7);
+  mt.put(9, 8);
+  mt.put(3, 0);
+  mt.put(10, 1);
+  mt.put(11, 17);
+  mt.print();
+
+  std::cout << mt.get(5) << std::endl;
+  std::cout << mt.get(6) << std::endl;
+  std::cout << mt.get(2) << std::endl;
+  std::cout << mt.get(1) << std::endl;
+  std::cout << mt.get(1) << std::endl;
+  std::cout << mt.get(9) << std::endl;
+  std::cout << mt.get(3) << std::endl;
+  std::cout << mt.get(10) << std::endl;
+  std::cout << mt.get(11) << std::endl;
+
+  vector<pair<db_key_t, db_val_t> > mt_vector = mt.scan(4, 10);
+  for (pair<db_key_t, db_val_t> pair : mt_vector)
+  {
+    cout << pair.first << ", " << pair.second << endl;
+  }
+  cout << "size: " << mt_vector.size() << endl;
+
+  // std::ofstream outputFile("sst_1.bin", std::ios::binary);
+  // for (const auto &p : mt_vector)
+  // {
+  //   outputFile.write((char *)&p, sizeof(p));
+  // }
+  // outputFile.close();
 }
