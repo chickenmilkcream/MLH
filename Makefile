@@ -1,6 +1,6 @@
 CC := g++
 CFLAGS := -Wall -g
-OBJFILES := main.o kv_store.o memtable.o
+OBJFILES := avl_node.o avl_tree.o memtable.o kv_store.o main.o
 
 all: main
 
