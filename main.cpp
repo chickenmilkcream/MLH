@@ -22,40 +22,49 @@
 #include "memtable.h"
 
 int main(int argc, char *argv[])
-{       
-    Memtable mt = Memtable(10);
-    assert(mt.max_size == 10);
+{
+    // Want the max size to be 10 key-value pairs with each pair taking up 16 bytes
+    KeyValueStore kv = KeyValueStore(160); 
 
-    mt.put(5, 1);
-    mt.put(6, 3);
-    mt.put(2, 8);
-    mt.put(1, 9);
-    mt.put(1, 7);
-    mt.put(9, 8);
-    mt.put(3, 0);
-    mt.put(10, 1);
-    mt.put(11, 17);
-    mt.print();
+    kv.put(5, 1);
+    kv.put(6, 3);
+    kv.put(2, 8);
+    kv.put(1, 9);
+    kv.put(1, 7);
+    kv.put(9, 8);
+    kv.put(3, 0);
+    kv.put(10, 1);
+    kv.put(11, 17);
+    kv.put(69, 17);
 
-    // Testing the get functionality
-    assert(mt.get(5) == 1);
-    assert(mt.get(6) == 3);
-    assert(mt.get(2) == 8);
-    assert(mt.get(1) == 7);
-    assert(mt.get(9) == 8);
-    assert(mt.get(3) == 0);
-    assert(mt.get(10) == 1);
-    assert(mt.get(11) == 17);
+    kv.print();
+
+    /*
+    Testing the get functionality
+    */
+    
+    assert(kv.get(5) == 1);
+    assert(kv.get(6) == 3);
+    assert(kv.get(2) == 8);
+    assert(kv.get(1) == 7);
+    assert(kv.get(9) == 8);
+    assert(kv.get(3) == 0);
+    assert(kv.get(10) == 1);
+    assert(kv.get(11) == 17);
+    assert(kv.get(69) == 17);
+
     try { // making sure that invalid_argument is thrown when trying to retrieve non existent key
-        mt.get(-100);
+        kv.get(100);
         assert(false);
     } catch(invalid_argument e) {
     }
 
-    // Testing the scan functionality
+    /*
+    Testing the scan functionality
+    */
 
     // Testing normal scan
-    vector<pair<db_key_t, db_val_t> > mt_vector = mt.scan(4, 10);
+    vector<pair<db_key_t, db_val_t> > mt_vector = kv.scan(4, 10);
     vector<pair<db_key_t, db_val_t> > expected_vector;
     expected_vector.push_back(pair<db_key_t, db_val_t>(5, 1));
     expected_vector.push_back(pair<db_key_t, db_val_t>(6, 3));
@@ -68,7 +77,7 @@ int main(int argc, char *argv[])
     mt_vector.clear();
 
     // Testing scan of 1 element
-    mt_vector = mt.scan(10, 10);
+    mt_vector = kv.scan(10, 10);
     expected_vector.push_back(pair<db_key_t, db_val_t>(10, 1));
 
     assert(mt_vector.size() == 1);
@@ -77,18 +86,45 @@ int main(int argc, char *argv[])
     mt_vector.clear();
 
     // Testing scan of 0 elements
-    mt_vector = mt.scan(11, 10);
+    mt_vector = kv.scan(11, 10);
 
     assert(mt_vector.size() == 0);
     assert(mt_vector == expected_vector);
 
-    // Testing the serialize functionality
-    // todo: jason you got this I believe in you
+    // Testing scan of all elements
+    mt_vector = kv.scan(0, 99999999);
+    assert(mt_vector.size() == 9);
 
-    // std::ofstream outputFile("sst_1.bin", std::ios::binary);
-    // for (const auto &p : mt_vector)
-    // {
-    //   outputFile.write((char *)&p, sizeof(p));
-    // }
-    // outputFile.close();
+    /*
+    Testing the serialize functionality
+    */
+
+    // Testing sst_1.bin has correct elements
+    kv.put(699, 420);
+
+    kv.read_from_file("sst_1.bin"); // Should expect to see everything up until this point
+
+    // Testing sst_2.bin has correct elements
+    kv.put(5, 1);
+    kv.put(6, 3);
+    kv.put(2, 8);
+    kv.put(1, 9);
+    kv.put(8, 7);
+    kv.put(9, 8);
+    kv.put(3, 0);
+    kv.put(10, 1);
+    kv.put(11, 17);
+    kv.put(69, 17); // All of this will be added to sst_2.bin
+    kv.put(99, 17);
+    kv.print(); // Should expect to only expect to see 99 in the new memtable
+
+    kv.read_from_file("sst_2.bin");
+
+    // TODO BUG: if we try to put 3 consequtive elements like this that requires rotation, it seg faults.
+    // kv.put(69, 17);
+    // kv.print();
+    // kv.put(68, 17);
+    // kv.print();
+    // kv.put(67, 17);
+    // kv.print();
 }

@@ -8,8 +8,8 @@ using namespace std;
 class Memtable
 {
 public:
-  unsigned int max_size;
-  unsigned int size;
+  unsigned int max_size; // Default should be 4KB
+  unsigned int size;     // The number of bytes in the memtable
 
   Memtable(uint64_t memtable_size = 0);
   db_val_t get(db_key_t key);

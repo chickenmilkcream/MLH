@@ -35,17 +35,18 @@ db_val_t KeyValueStore::get(db_key_t key)
     }
     catch (std::invalid_argument &e)
     {
-        cerr << e.what() << endl;
+        throw invalid_argument("AHH");
     }
     // todo check SSTs
+    // return this->memtable.get(key);
 }
 
 void KeyValueStore::put(db_key_t key, db_val_t val)
 {
-    this->memtable.size ++;
     this->memtable.put(key, val);
-    // todo talk to json about increasing capacity and then calling serialize
-    if (this->memtable.size == this->memtable.max_size) { 
+
+    if (this->memtable.size == this->memtable.max_size)
+    {
         this->serialize();
         this->num_sst += 1;
     }
@@ -56,57 +57,48 @@ vector<pair<db_key_t, db_val_t> > KeyValueStore::scan(db_key_t min_key, db_key_t
     return this->memtable.scan(min_key, max_key);
 }
 
-void KeyValueStore::write_to_file(vector<pair<db_key_t, db_val_t> > vector_mt){
+void KeyValueStore::print() { this->memtable.print(); }
+
+void KeyValueStore::write_to_file(vector<pair<db_key_t, db_val_t> > vector_mt)
+{
     std::string s = "sst_" + to_string(this->num_sst) + ".bin";
-    const char * filename = s.c_str();
-    // std::ofstream outputFile(filename, std::ios::binary);
-    // for (const auto &p : vector_mt)
-    // {
-    //     outputFile.write((char *)&p, sizeof(p));
-    // }
+    const char *filename = s.c_str();
 
-    int fd = open(filename, O_CREAT | O_WRONLY | O_TRUNC);
-    ssize_t nwritten = pwrite(fd, &vector_mt, sizeof(vector_mt), -1);
-    if (nwritten != sizeof(vector_mt))
+    // write the vector to a binary file
+    int outFile = open(filename, O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR);
+    write(outFile, &vector_mt[0], vector_mt.size() * sizeof(pair<db_key_t, db_val_t>));
+    close(outFile);
+}
+
+void KeyValueStore::read_from_file(const char *filename)
+{
+    // read the vector from the binary file
+    vector<pair<db_key_t, db_val_t> > pairs2;
+
+    int inFile = open(filename, O_RDONLY);
+
+    off_t offset = 0;
+    pairs2.resize(this->memtable_size/16);
+    for (int i = 0; i < this->memtable_size / 16; i++)
     {
-        cerr << "Error writing to file." << endl;
-        return;
+        pread(inFile, &pairs2[i], sizeof(pair<db_key_t, db_val_t>), offset);
+        offset += sizeof(pair<db_key_t, db_val_t>);
     }
+    close(inFile);
 
-    // for (auto &p : vector_mt)
-    // {
-    //     ssize_t nwritten = pwrite(fd, &p, sizeof(p), -1);
-    //     if (nwritten != sizeof(p)) {
-    //         cerr << "Error writing to file." << endl;
-    //         return;
-    //     }
-    // }
-
-    close(fd);
+    // print the read vector
+    for (auto p : pairs2)
+    {
+        cout << p.first << " " << p.second << endl;
+    }
 }
 
 void KeyValueStore::serialize()
 {
-    vector<pair<db_key_t, db_val_t> > vector_mt = this->memtable.scan((uint64_t)-999999999, (uint64_t)999999999);
+    // TODO BUG: if we set min_key as a negative number, scan doesn't work and return 0 apirs. This might have something to do with key as uint64 being converted to unsigned int somehow.
+    vector<pair<db_key_t, db_val_t> > vector_mt = this->memtable.scan(0, 999999999);
+
     this->write_to_file(vector_mt);
-    // TODO: free memtable 
-    // delete this->memtable;
+
     this->memtable = Memtable(this->memtable_size);
-
-
-    //    vector<std::pair<int, int>> vec;
-    //    ifstream inputFile("sst_1.bin", ios::binary);
-    //
-    //    while (inputFile.good()) {
-    //        pair < db_key_t, db_val_t > p;
-    //        inputFile.read((char *) &p, sizeof(p));
-    //        vec.emplace_back(p);
-    //    }
-    //    inputFile.close();
-    //
-    //    for (const auto &p: vec) {
-    //        cout << p.first << " " << p.second << endl;
-    //    }
-    //
-    //    return 0;
 }

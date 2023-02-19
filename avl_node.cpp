@@ -108,6 +108,7 @@ shared_ptr<AVLNode> AVLNode::put(db_key_t key, db_val_t val)
     return shared_from_this();
   }
 
+  // TODO BUG: might be one here, see insert consequtive numbers bug
   this->height = max(this->left ? this->left->height : 0,
                      this->right ? this->right->height : 0) +
                  1;
