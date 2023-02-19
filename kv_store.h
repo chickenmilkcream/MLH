@@ -6,10 +6,6 @@
 
 #include "memtable.h"
 
-
-typedef uint64_t db_key_t;
-typedef uint64_t db_val_t;
-
 using namespace std;
 
 class KeyValueStore

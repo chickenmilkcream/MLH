@@ -104,8 +104,8 @@ int main(int argc, char *argv[])
 
     // TODO BUG: if we try to put 3 consequtive elements like this that requires rotation, it seg faults.
     kv = KeyValueStore(2000);
-    kv.put(69, 17);
-    kv.put(68, 17);
-    kv.put(67, 17);
+    kv.put(69, -17);
+    kv.put(68, -17);
+    kv.put(67, -17);
     kv.print();
 }

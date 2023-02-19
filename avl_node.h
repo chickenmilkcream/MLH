@@ -6,8 +6,8 @@
 
 using namespace std;
 
-typedef uint64_t db_key_t;
-typedef uint64_t db_val_t;
+typedef int64_t db_key_t;
+typedef int64_t db_val_t;
 
 class AVLNode : public enable_shared_from_this<AVLNode>
 {
