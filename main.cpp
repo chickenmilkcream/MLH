@@ -1,23 +1,5 @@
-// open(name)
-// close()
-// get(key)
-// should search memtable, then all SSTs in order of youngest to oldest
-// BST search over memtable
-// binary search over SSTs
-
-// put(key, value)
-// scan(key1, key2)     
-
-// memtable (memtable_size) balanced binary tree in memory --> serialized to SST in storage
-
-
-// class KeyValueStore
-
-
-// class Memtable
-// 4KB page size
-
 #include <iostream>
+#include <cassert>
 #include "kv_store.h"
 #include "memtable.h"
 
@@ -121,10 +103,9 @@ int main(int argc, char *argv[])
     kv.read_from_file("sst_2.bin");
 
     // TODO BUG: if we try to put 3 consequtive elements like this that requires rotation, it seg faults.
-    // kv.put(69, 17);
-    // kv.print();
-    // kv.put(68, 17);
-    // kv.print();
-    // kv.put(67, 17);
-    // kv.print();
+    kv = KeyValueStore(2000);
+    kv.put(69, 17);
+    kv.put(68, 17);
+    kv.put(67, 17);
+    kv.print();
 }

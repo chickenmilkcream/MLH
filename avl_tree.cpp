@@ -37,7 +37,7 @@ void AVLTree::put(db_key_t key, db_val_t val)
   }
   else
   {
-    this->root->put(key, val);
+    this->root = this->root->put(key, val);
   }
 }
 

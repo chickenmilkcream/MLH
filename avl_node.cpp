@@ -32,7 +32,7 @@ shared_ptr<AVLNode> AVLNode::rotate_right()
   this->height = max(this->left ? this->left->height : 0,
                      this->right ? this->right->height : 0) +
                  1;
-  right->height = max(left->left ? left->left->height : 0, this->height) + 1;
+  left->height = max(left->left ? left->left->height : 0, this->height) + 1;
   return left;
 }
 
@@ -108,7 +108,6 @@ shared_ptr<AVLNode> AVLNode::put(db_key_t key, db_val_t val)
     return shared_from_this();
   }
 
-  // TODO BUG: might be one here, see insert consequtive numbers bug
   this->height = max(this->left ? this->left->height : 0,
                      this->right ? this->right->height : 0) +
                  1;
@@ -168,7 +167,7 @@ void AVLNode::scan(db_key_t min_key, db_key_t max_key,
 void AVLNode::print(string prefix, bool is_left)
 {
   cout << prefix + (is_left ? "├──" : "└──") << "(" << this->key << ":"
-       << this->val << ")" << endl;
+       << this->val << "): " << this->height << endl;
 
   if (this->left)
   {
