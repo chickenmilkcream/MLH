@@ -13,7 +13,8 @@
 #include <random>
 
 int main() {
-    std::vector<int> input_sizes = {100000, 200000, 300000, 400000, 500000};
+    int arr[] = {100000, 200000, 300000, 400000, 500000};
+    std::vector<int> input_sizes(arr, arr + sizeof(arr) / sizeof(int));
     std::vector<double> runtimes;
 
     for (int input_size : input_sizes) {
