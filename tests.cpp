@@ -13,21 +13,21 @@
 #include <random>
 
 int main() {
-    std::vector<int> input_sizes = {1000, 10000, 20000, 30000, 50000, 100000, 200000, 500000, 1000000};
+    std::vector<int> input_sizes = {100000, 200000, 300000, 400000, 500000};
     std::vector<double> runtimes;
 
     for (int input_size : input_sizes) {
 
-        auto kv_store = Memtable((uint32_t ) 69420);
+        auto kv_store = Memtable((uint32_t ) 69420000);
 
         auto start = std::chrono::high_resolution_clock::now();
 
         for (int i; i<input_size; i++) {
-            std::mt19937 generator(std::random_device{}());
-            std::uniform_int_distribution<int> distribution(1, 100);
-            int random_integer = distribution(generator);
-            kv_store.put((uint64_t )random_integer, (uint64_t ) 69420);
-
+//            std::mt19937 generator(std::random_device{}());
+//            std::uniform_int_distribution<int> distribution(1, 10000000);
+//            int random_integer = distribution(generator);
+//            random_integer = i;
+            kv_store.put((uint64_t )i, (uint64_t ) 69420);
         }
 
         auto stop = std::chrono::high_resolution_clock::now();
@@ -41,6 +41,9 @@ int main() {
 
         // Output the runtime
         std::cout << "Input size: " << input_size << "; Time taken: " << runtime << " seconds" << std::endl;
+        std::cout << kv_store.size << std::endl;
+
+
     }
 
     // Write the results to a CSV file
