@@ -26,9 +26,8 @@ private:
   int memtable_size;
   void serialize();
   void write_to_file(vector<pair<db_key_t, db_val_t> > vector_mt);
-  int file_size(std::fstream &file);
-  int binary_search_smallest(std::fstream &file, db_key_t key);
-  int binary_search_exact(std::fstream &file, db_key_t key);
+  int binary_search_smallest(int file, db_key_t key);
+  int binary_search_exact(int file, db_key_t key);
 };
 
 #endif

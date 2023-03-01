@@ -46,21 +46,19 @@ db_val_t KeyValueStore::get(db_key_t key)
         // Loop through the SSTs from latest to oldest
         for (int i = this->num_sst - 1; i > 0; i--)
         {
+            // Open the file
             std::string s = "sst_" + to_string(i) + ".bin";
-
-            // Open the file in binary mode
-            std::fstream file(s, std::ios::binary | std::ios::in | std::ios::out);
-            if (!file)
-                continue; // If the file doesn't exist
+            int file = open(s.c_str(), O_RDONLY);
+            if (file == -1) continue; // If we can't find open the file
 
             int position = binary_search_exact(file, key);
             if (position == -1)
                 continue; // If we can't find min_key in the file
 
             // Jump to the position in the file with the key
-            file.seekg(position * pairSize);
+            off_t offset = position * pairSize;
             pair<db_key_t, db_val_t> kv_pair;
-            file.read(reinterpret_cast<char *>(&kv_pair), pairSize);
+            ssize_t bytes_read = pread(file, &kv_pair, pairSize, offset);
 
             return kv_pair.second;
         }
@@ -90,25 +88,27 @@ vector<pair<db_key_t, db_val_t> > KeyValueStore::scan(db_key_t min_key, db_key_t
     // Loop through the SSTs from latest to oldest
     for (int i = this->num_sst - 1; i > 0; i--)
     {
+        // Open the file
         std::string s = "sst_" + to_string(i) + ".bin";
-
-        // Open the file in binary mode
-        std::fstream file(s, std::ios::binary | std::ios::in | std::ios::out);
-        if (!file) continue; // If the file doesn't exist
+        int file = open(s.c_str(), O_RDONLY);
+        if (file == -1) continue; // If we can't find open the file
 
         int position = binary_search_smallest(file, min_key);
         if (position == -1) continue; // If we can't find min_key in the file
 
         // Jump to the position in the file with the min_key
-        file.seekg(position * pairSize);
-        pair<db_key_t, db_val_t> kv_pair;
+        off_t offset = position * pairSize;
 
         // Continuously scan until we reach max_key or end of file
-        while (file.read(reinterpret_cast<char *>(&kv_pair), pairSize))
+        while (true)
         {
-            if (kv_pair.first > max_key) break;
+            pair<db_key_t, db_val_t> kv_pair;
+            ssize_t bytes_read = pread(file, &kv_pair, pairSize, offset);
+            if (kv_pair.first > max_key || bytes_read == 0) break;
             sst_results.push_back(kv_pair);
+            offset += pairSize;
         }
+        close(file);
     }
 
     // Return the memtable and SST results
@@ -162,32 +162,22 @@ void KeyValueStore::serialize()
     this->memtable = Memtable(this->memtable_size);
 }
 
-int KeyValueStore::file_size(std::fstream &file)
-{
-    int currentPos = file.tellg();
-    file.seekg(0, std::ios::end);
-    int fileSize = file.tellg();
-    file.seekg(currentPos);
-    return fileSize;
-}
-
-int KeyValueStore::binary_search_smallest(std::fstream &file, db_key_t target)
+int KeyValueStore::binary_search_smallest(int file, db_key_t target)
 {
     // This function finds the position of the smallest key that is greater than target
 
     // Compute the number of key-value pairs in the file
     int pairSize = (sizeof(db_key_t) + sizeof(db_val_t));
-    int numPairs = file_size(file) / pairSize;
+    int numPairs = lseek(file, 0, SEEK_END) / pairSize;
 
     // Binary search loop
     int low = 0, high = numPairs - 1, result = numPairs;
     while (low <= high)
     {
         int mid = (low + high) / 2;
-        file.seekg(mid * pairSize);
         pair<db_key_t, db_val_t> pair;
+        pread(file, &pair, pairSize, mid * pairSize);
 
-        file.read(reinterpret_cast<char *>(&pair), pairSize);
         if (pair.first >= target)
         {
             result = mid;
@@ -201,23 +191,23 @@ int KeyValueStore::binary_search_smallest(std::fstream &file, db_key_t target)
     return result;
 }
 
-int KeyValueStore::binary_search_exact(std::fstream &file, db_key_t target)
+int KeyValueStore::binary_search_exact(int file, db_key_t target)
 {
     // This function finds the position of the key that is equal to target
 
     // Compute the number of key-value pairs in the file
     int pairSize = (sizeof(db_key_t) + sizeof(db_val_t));
-    int numPairs = file_size(file) / pairSize;
+    int numPairs = lseek(file, 0, SEEK_END) / pairSize;
 
     // Binary search loop
     int low = 0, high = numPairs - 1;
     while (low <= high)
     {
         int mid = (low + high) / 2;
-        file.seekg(mid * pairSize);
+        
         pair<db_key_t, db_val_t> pair;
+        pread(file, &pair, pairSize, mid * pairSize);
 
-        file.read(reinterpret_cast<char *>(&pair), pairSize);
         if (pair.first == target)
         {
             return mid;
