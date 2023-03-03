@@ -1,8 +1,8 @@
 CC := g++
 CFLAGS := -Wall -g
-OBJFILES := avl_node.o avl_tree.o memtable.o kv_store.o
+OBJFILES := avl_node.o avl_tree.o memtable.o kv_store.o bp_pageframe.o bp_linkedlist.o bp_directory.o
 
-all: clean phase1_tests
+all: clean phase2_tests
 
 phase1_experiments: $(OBJFILES) experiments/phase1_experiments.o
 	$(CC) $(CFLAGS) -o experiments/phase1_experiments $(OBJFILES) experiments/phase1_experiments.o
@@ -11,6 +11,10 @@ phase1_experiments: $(OBJFILES) experiments/phase1_experiments.o
 phase1_tests: $(OBJFILES) phase1_tests.o
 	$(CC) $(CFLAGS) -o phase1_tests $(OBJFILES) phase1_tests.o
 	./phase1_tests
+
+phase2_tests: $(OBJFILES) phase2_tests.o
+	$(CC) $(CFLAGS) -o phase2_tests $(OBJFILES) phase2_tests.o
+	./phase2_tests
 
 %.o: %.cpp %.h
 	$(CC) $(CFLAGS) -c $<
