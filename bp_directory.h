@@ -4,8 +4,9 @@
 #include <cstdint>
 #include <string>
 #include <map>
+#include <memory>
 
-// #include "xxhash.h"
+#include "xxhash.h"
 #include "bp_linkedlist.h"
 
 using namespace std;
@@ -20,7 +21,7 @@ public:
     void edit_directory_size(int new_size = 0);
     void set_policy(string policy);
 
-    map<string, BPLinkedList> directory;
+    map<string, shared_ptr<BPLinkedList> > directory;
 
 private:
     string policy;
