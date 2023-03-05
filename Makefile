@@ -1,6 +1,6 @@
 CC := g++
 CFLAGS := -Wall -g
-OBJFILES := avl_node.o avl_tree.o memtable.o kv_store.o bp_pageframe.o bp_linkedlist.o bp_directory.o
+OBJFILES := avl_node.o avl_tree.o memtable.o kv_store.o xxhash.o bp_pageframe.o bp_linkedlist.o bp_directory.o
 
 all: clean phase2_tests
 

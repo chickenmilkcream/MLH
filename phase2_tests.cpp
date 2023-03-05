@@ -9,12 +9,31 @@ int main(int argc, char *argv[])
     std::cout << "Running test cases for Phase 2 \n";
     std::cout << "--------------------------------------------------------------- \n";
 
-    BPDirectory bpd = BPDirectory("clock", 3, 3, 100);
+    BPDirectory bpd = BPDirectory("clock", 3, 10, 100);
+
+    int start = 0;
+    for (auto entry = bpd.directory.begin(); entry != bpd.directory.end(); ++entry)
+    {
+        std::cout << "--------------------------------------------------------------- \n";
+        std::cout << "The directory entry: " << entry->first << ": " << std::endl;
+        entry->second->addPageFrame(start);
+        entry->second->printList();
+        start ++;
+    }
+    std::cout << "--------------------------------------------------------------- \n";
+    std::cout << "GONNA EXTEND \n";
+    
+    bpd.extend_directory();
+
+    bpd.directory["1111"]->addPageFrame(12);
+    bpd.directory["1011"]->addPageFrame(100);
 
     for (auto entry = bpd.directory.begin(); entry != bpd.directory.end(); ++entry)
     {
-        std::cout << entry->first << ": " << std::endl;
-        entry->second.addPageFrame(1);
-        entry->second.printList();
+        std::cout << "--------------------------------------------------------------- \n";
+        std::cout << "The directory entry: " << entry->first << ": " << std::endl;
+        entry->second->printList();
     }
+
+    bpd.extend_directory();
 }

@@ -8,11 +8,12 @@ using namespace std;
 class BPLinkedList
 {
 public:
-    PageFrame *head;
-
     BPLinkedList();
     void addPageFrame(int val);
     void printList();
+
+    PageFrame *head;
+    int size;
 };
 
 #endif
