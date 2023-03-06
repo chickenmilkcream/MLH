@@ -15,18 +15,19 @@ KeyValueStore::KeyValueStore(uint64_t memtable_size)
     this->memtable = Memtable(memtable_size);
     this->num_sst = 1;
     this->memtable_size = memtable_size;
+    this->get_method = "binary";
 }
 
 void KeyValueStore::open_db(string db)
 {
-    // todo load all SSTs i think...
-    // TODO: discuss with team what else to do here
+    // TODO TEAM: clarify load all SSTs??
+    // TODO TEAM: discuss with team what else to do here
 }
 
 void KeyValueStore::close_db()
 {
     this->serialize();
-    // TODO: discuss with team what else to do here
+    // TODO TEAM: discuss with team what else to do here
 }
 
 db_val_t KeyValueStore::get(db_key_t key)
@@ -49,8 +50,24 @@ db_val_t KeyValueStore::get(db_key_t key)
             std::string s = "sst_" + to_string(i) + ".bin";
             int file = open(s.c_str(), O_RDONLY);
             if (file == -1) continue; // If we can't find open the file
+            
+            // TODO AMY: implement the logic for 
+            // if page in BP: return it 
+            // otherwise: add it to the BP after getting it
+            // Also the same thing in the binary search functions
 
-            int position = binary_search_exact(file, key);
+            // TODO AMY: change binary functions so that it looks for 4kb pages at a time instead of individual key-value pairs
+
+            int position;
+            if (this->get_method.compare("binary") == 0)
+            {
+                position = binary_search_exact(file, key);
+            }
+            else if (this->get_method.compare("btree") == 0)
+            {
+                cout << "TODO JUN" << endl;
+            }
+
             if (position == -1)
                 continue; // If we can't find min_key in the file
 
@@ -92,8 +109,18 @@ vector<pair<db_key_t, db_val_t> > KeyValueStore::scan(db_key_t min_key, db_key_t
         int file = open(s.c_str(), O_RDONLY);
         if (file == -1) continue; // If we can't find open the file
 
-        int position = binary_search_smallest(file, min_key);
-        if (position == -1) continue; // If we can't find min_key in the file
+        int position;
+        if (this->get_method.compare("binary") == 0)
+        {
+            position = binary_search_smallest(file, min_key);
+        }
+        else if (this->get_method.compare("btree") == 0)
+        {
+            cout << "todo JUN" << endl;
+        }
+
+        if (position == -1)
+            continue; // If we can't find min_key in the file
 
         // Jump to the position in the file with the min_key
         off_t offset = position * pairSize;
@@ -221,4 +248,16 @@ int KeyValueStore::binary_search_exact(int file, db_key_t target)
         }
     }
     return -1;
+}
+
+void KeyValueStore::set_get_method(string get_method)
+{
+    if (get_method.compare("binary") != 0 || get_method.compare("btree") != 0)
+    {
+        cout << "This is not a valid get method. Please pass in binary or btree." << endl;
+    }
+    else
+    {
+        this->get_method = get_method;
+    }
 }
