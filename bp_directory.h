@@ -15,10 +15,10 @@ class BPDirectory
 {
 public:
     BPDirectory(string eviction_policy, int initial_num_bits, int maximum_num_bits, int maximum_num_pages);
-    void insert_page(string db);
+    void insert_page(string sst_name, int page_number);
     void extend_directory();
     void evict_directory();
-    void edit_directory_size(int new_size = 0);
+    void edit_directory_size(int new_num_bits = 0);
     void set_policy(string policy);
 
     map<string, shared_ptr<BPLinkedList> > directory;
@@ -34,7 +34,8 @@ private:
 
     void evict_directory_lru();
     void evict_directory_clock();
-    vector<string> generateBinaryStrings(int n, string str = "");
+    string hash_string(string source);
+    vector<string> generate_binary_strings(int n, string str = "");
 };
 
 #endif

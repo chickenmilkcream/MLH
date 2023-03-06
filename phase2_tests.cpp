@@ -35,5 +35,6 @@ int main(int argc, char *argv[])
         entry->second->printList();
     }
 
-    bpd.extend_directory();
+    bpd.insert_page("sst1", 1); // This will get hashed to 1111
+    bpd.directory["1111"]->printList();
 }
