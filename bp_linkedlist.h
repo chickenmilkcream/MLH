@@ -8,12 +8,13 @@ using namespace std;
 class BPLinkedList
 {
 public:
-    BPLinkedList();
-    void addPageFrame(int val);
-    void printList();
-
     PageFrame *head;
     int size;
+    
+    BPLinkedList();
+    void add_page_frame(int page_content, string sst_name, int page_number);
+    int find_page_frame(string sst_name, int page_number);
+    void print_list();
 };
 
 #endif

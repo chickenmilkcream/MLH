@@ -1,5 +1,6 @@
-#include "kv_store.h"
+#include "bp_directory.h"
 #include "memtable.h"
+#include "kv_store.h"
 #include <iostream>
 #include <vector>
 #include <utility>
@@ -10,11 +11,14 @@
 
 using namespace std;
 
-KeyValueStore::KeyValueStore(uint64_t memtable_size)
+KeyValueStore::KeyValueStore(int memtable_size)
 {
     this->memtable = Memtable(memtable_size);
-    this->num_sst = 1;
+    this->buffer_pool = BPDirectory("clock", 3, 10, 100);
+
+    this->sst_num = 1;
     this->memtable_size = memtable_size;
+    this->page_size = 4064;
     this->get_method = "binary";
 }
 
@@ -44,7 +48,7 @@ db_val_t KeyValueStore::get(db_key_t key)
     {
         // Couldn't find it in the memtable
         // Loop through the SSTs from latest to oldest
-        for (int i = this->num_sst - 1; i > 0; i--)
+        for (int i = this->sst_num - 1; i > 0; i--)
         {
             // Open the file
             std::string s = "sst_" + to_string(i) + ".bin";
@@ -70,12 +74,26 @@ db_val_t KeyValueStore::get(db_key_t key)
 
             if (position == -1)
                 continue; // If we can't find min_key in the file
+            
+            // // Get the page number given the position of the key-value pair
+            // int page_number = get_page_number(position);
+            // // Check in the buffer for the associated page
+            // try
+            // {
+            //     // Try to look in the memtable for the key
+            //     int page = this->buffer_pool.get_page(s, page_number);
+            // }
+            // catch (std::out_of_range &e)
+            // {
+            //     // Couldn't find it in the buffer pool
+            //     // Store the page and return the value
+            //     this->buffer_pool.insert_page(page_number, s, page_number);
+            // }
 
             // Jump to the position in the file with the key
             off_t offset = position * pairSize;
             pair<db_key_t, db_val_t> kv_pair;
             ssize_t bytes_read = pread(file, &kv_pair, pairSize, offset);
-
             return kv_pair.second;
         }
 
@@ -91,7 +109,7 @@ void KeyValueStore::put(db_key_t key, db_val_t val)
     if (this->memtable.size == this->memtable.max_size)
     {
         this->serialize();
-        this->num_sst += 1;
+        this->sst_num += 1;
     }
 }
 
@@ -102,7 +120,7 @@ vector<pair<db_key_t, db_val_t> > KeyValueStore::scan(db_key_t min_key, db_key_t
     int pairSize = (sizeof(db_key_t) + sizeof(db_val_t));
 
     // Loop through the SSTs from latest to oldest
-    for (int i = this->num_sst - 1; i > 0; i--)
+    for (int i = this->sst_num - 1; i > 0; i--)
     {
         // Open the file
         std::string s = "sst_" + to_string(i) + ".bin";
@@ -146,7 +164,7 @@ void KeyValueStore::print() { this->memtable.print(); }
 
 void KeyValueStore::write_to_file(vector<pair<db_key_t, db_val_t> > vector_mt)
 {
-    std::string s = "sst_" + to_string(this->num_sst) + ".bin";
+    std::string s = "sst_" + to_string(this->sst_num) + ".bin";
     const char *filename = s.c_str();
 
     // write the vector to a binary file
@@ -219,6 +237,7 @@ int KeyValueStore::binary_search_smallest(int file, db_key_t target)
 
 int KeyValueStore::binary_search_exact(int file, db_key_t target)
 {
+    // TODO AMY: Change binary search to look like https://piazza.com/class/lckjb9lrfaa57i/post/68
     // This function finds the position of the key that is equal to target
 
     // Compute the number of key-value pairs in the file
@@ -260,4 +279,20 @@ void KeyValueStore::set_get_method(string get_method)
     {
         this->get_method = get_method;
     }
+}
+
+void KeyValueStore::set_page_size(int page_size)
+{
+    if (page_size % 16 != 0)
+    {
+        cout << "Please make sure that the page size you pass in is a factor of 16." << endl;
+    }
+    else
+    {
+        this->page_size = page_size;
+    }
+}
+
+int KeyValueStore::get_page_number(int kv_position) {
+    return kv_position / (this->page_size / 16);
 }

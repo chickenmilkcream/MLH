@@ -28,23 +28,43 @@ BPDirectory::BPDirectory(string eviction_policy, int initial_num_bits, int maxim
     }
 }
 
-void BPDirectory::insert_page(string sst_name, int page_number)
+void BPDirectory::insert_page(int page, string sst_name, int page_number)
 {
     string source = sst_name + to_string(page_number);
     string directory_key = this->hash_string(source);
 
     // TODO AMY: hash actual 4kb page
-    this->directory[directory_key]->addPageFrame(page_number);
-    this->current_num_pages ++;
+    this->directory[directory_key]->add_page_frame(page, sst_name, page_number);
+    this->current_num_pages += 1;
 
-    if (this->current_num_pages > this->maximum_num_pages) {
+    if (this->current_num_pages >= this->maximum_num_pages) {
+        // This should rehash all the linkedlists greater than length 1 after expansion
         this->extend_directory();
+        return;
     }
+
+    // Rehash as soon as chain length gets to be greater than 1 
+    // Retrieved from: https://piazza.com/class/lckjb9lrfaa57i/post/78
+    // Case 1: a bucket pointed at by just one pointer from the directory. This bucket already expanded since the last time the directory expanded. We need to patiently wait until the directory expands again before we can expand this bucket.
+    // Case 2: a bucket pointed at by more than one pointer from the directory. We should expand this bucket immediately when it overflows.
+    // This is Case 2
+    vector<string> shared_keys = this->get_keys_sharing_linkedlist(this->directory, directory_key);
+    if (this->directory[directory_key]->size > 1 && shared_keys.size() > 1) {
+        this->rehash_linked_list(&this->directory, directory_key, shared_keys);
+    }
+}
+
+int BPDirectory::get_page(string sst_name, int page_number)
+{
+    string source = sst_name + to_string(page_number);
+    string directory_key = this->hash_string(source);
+
+    // TODO AMY: hash actual 4kb page
+    return this->directory[directory_key]->find_page_frame(sst_name, page_number);
 }
 
 void BPDirectory::extend_directory()
 {
-
     this->current_num_bits ++;
     this->maximum_num_pages *= 2;
 
@@ -57,26 +77,25 @@ void BPDirectory::extend_directory()
     map<string, shared_ptr<BPLinkedList> > new_directory;
     for (const auto &pair : this->directory)
     {
-        string key = pair.first;
-        shared_ptr<BPLinkedList> value = pair.second;
-        new_directory[key + "0"] = value;
-        new_directory[key + "1"] = value;
-    }
-    this->directory = new_directory;
+        string entry = pair.first;
+        shared_ptr<BPLinkedList> linkedlist = pair.second;
+        new_directory[entry + "0"] = linkedlist;
+        new_directory[entry + "1"] = linkedlist;
 
-    for (const auto &pair : this->directory)
-    {
-        // TODO AMY: loop throguh linkedlist and rehash everything 
-        if (pair.second->size > 1) {
-            std::cout << pair.first << "TODO REHASH" << endl;
+        if (linkedlist->size > 1)
+        {
+            vector<string> shared_keys = this->get_keys_sharing_linkedlist(new_directory, entry + "0"); // Shared keys should only be entry + "0" and entry + "1"
+            this->rehash_linked_list(&new_directory, entry + "0", shared_keys);
         }
     }
-}
+    this->directory = new_directory;
+    }
 
 void BPDirectory::evict_directory() {
+    // TODO JASON: might have to modify current_num_bits and max_num_pages and current_num_pages
     if (this->policy.compare("LRU") == 0) {
         this->evict_directory_lru();
-    } else if (this->policy.compare("Clock") == 0) {
+    } else if (this->policy.compare("clock") == 0) {
         this->evict_directory_clock();
     } else {
         cout << "There is not a valid policy in place. Please set policy as LRU or Clock." << endl;
@@ -91,6 +110,30 @@ void BPDirectory::evict_directory_lru()
 void BPDirectory::evict_directory_clock()
 {
     cout << "TODO JASON Clock" << endl;
+}
+
+void BPDirectory::shrink_directory(int new_maximum_num_bits) {
+
+    if (new_maximum_num_bits >= this->maximum_num_bits) {
+        cout << "Please the new maximum num bits to be less than the current maximum num bits: " << this->maximum_num_bits << endl;
+        return;
+    }
+
+    if (new_maximum_num_bits < this->current_num_bits)
+    {
+        // TODO TEAM: figure out confusion with max_size being actual size or number of prefix bits ahh
+        // TODO TEAM: figure out what to do here
+
+        // Evict extra entries, but which ones? How many times do we evict? current_num_bits - new_maximum_num_bits??
+        // When do we stop evicting? -> what do we set current_num_bits to be?
+        this->evict_directory();
+        this->current_num_bits = new_maximum_num_bits;
+
+        // TODO AMY: decrement max_num_pages several times, should be taken care of in evict_directory
+        // TODO AMY: shrink the actual directory table hmmmmmm so confused here
+    }
+
+    this->maximum_num_bits = new_maximum_num_bits;
 }
 
 vector<string> BPDirectory::generate_binary_strings(int n, string str)
@@ -120,22 +163,65 @@ string BPDirectory::hash_string(string source)
 }
 
 void BPDirectory::set_policy(string policy) {
-    if (policy.compare("LRU") != 0 || policy.compare("Clock") != 0) {
-        cout << "This is not a valid policy. Please pass in LRU or Clock." << endl;
+    if (policy.compare("LRU") != 0 || policy.compare("clock") != 0) {
+        cout << "This is not a valid policy. Please pass in LRU or clock." << endl;
     } else {
         this->policy = policy;
     }
 }
 
-void BPDirectory::edit_directory_size(int new_num_bits) {
+void BPDirectory::rehash_linked_list(map<string, shared_ptr<BPLinkedList> > *directory, string key, vector<string> shared_keys)
+{
+    // Right now we have a situation where multiple entries both point to the same linkedlist
+    // but this linkedlist need to be rehashed between the multiple entries because the length is too long
+    map<string, shared_ptr<BPLinkedList> > key_to_new_linkedlist;
 
-    if (new_num_bits > this->current_num_bits) {
-        // TODO TEAM: figure out confusion with max_size being actual size or number of prefix bits ahh
-        // TODO TEAM: figure out what to do here 
-        this->evict_directory();
-        // TODO AMY: supposed to implement a shrink_directory() as well
+    for (const auto &shared_key : shared_keys)
+    {
+        key_to_new_linkedlist[shared_key] = make_shared<BPLinkedList>();
     }
 
-    this->current_num_bits = new_num_bits;
-    this->maximum_num_bits = new_num_bits;
+    PageFrame *current = (*directory)[key]->head;
+    while (current != nullptr)
+    {
+        string source = current->sst_name + to_string(current->page_number);
+        string directory_key = this->hash_string(source);
+        key_to_new_linkedlist[directory_key]->add_page_frame(current->page_content, current->sst_name, current->page_number);
+        current = current->next;
+    }
+
+    for (const auto &pair : key_to_new_linkedlist)
+    {
+        string entry = pair.first;
+        shared_ptr<BPLinkedList> linkedlist = pair.second;
+        (*directory)[entry] = linkedlist;
+    }
+}
+
+vector<string> BPDirectory::get_keys_sharing_linkedlist(map<string, shared_ptr<BPLinkedList> > directory, string key)
+{
+    vector<string> shared_keys;
+    shared_ptr<BPLinkedList> shared_linkedlist = directory[key];
+
+    for (const auto &pair : directory)
+    {
+        string entry = pair.first;
+        shared_ptr<BPLinkedList> linkedlist = pair.second;
+
+        if (linkedlist == shared_linkedlist)
+        {
+            shared_keys.push_back(entry);
+        }
+    }
+
+    return shared_keys;
+}
+
+void BPDirectory::print_directory() {
+    cout << "The number of pages in the directory: " << this->current_num_pages << endl;
+    for (auto entry = this->directory.begin(); entry != this->directory.end(); ++entry)
+    {
+        std::cout << "The directory entry: " << entry->first << std::endl;
+        entry->second->print_list();
+    }
 }

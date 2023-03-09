@@ -10,8 +10,10 @@ using namespace std;
 class PageFrame
 {
 public:
-    PageFrame(int val);
-    int value;
+    PageFrame(int page_content, string sst_name, int page_number);
+    string sst_name;
+    int page_number;
+    int page_content;
     PageFrame *next;
 };
 
