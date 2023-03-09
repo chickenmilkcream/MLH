@@ -7,8 +7,10 @@
 
 #include <fcntl.h>
 
-PageFrame::PageFrame(int val)
+PageFrame::PageFrame(int page_content, string sst_name, int page_number)
 {
-    value = val;
+    this->page_content = page_content;
+    this->sst_name = sst_name;
+    this->page_number = page_number;
     next = nullptr;
 }

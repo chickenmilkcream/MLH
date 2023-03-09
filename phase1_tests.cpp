@@ -13,6 +13,9 @@ int main(int argc, char *argv[])
 
     KeyValueStore kv = KeyValueStore(160); 
 
+    // Want each page size to be 2 key-value pairs so that each SST will have 5 pages
+    kv.set_page_size(32);
+
     kv.put(5, 1);
     kv.put(6, 3);
     kv.put(2, 8);
@@ -117,10 +120,15 @@ int main(int argc, char *argv[])
     }
 
     // Testing get of an element in SST
-    
-    assert(kv.get(70) == 17);
-    assert(kv.get(93) == 0);
-    assert(kv.get(1) == 7);
+    std::cout << "Results of sst_1.bin: \n";
+    kv.read_from_file("sst_1.bin");
+
+    std::cout << "Results of sst_2.bin: \n";
+    kv.read_from_file("sst_2.bin");
+
+    assert(kv.get(70) == 17); // From memtable
+    assert(kv.get(93) == 0);  // From sst_2.bin
+    assert(kv.get(1) == 7);   // From sst_1.bin
 
     try
     { // making sure that invalid_argument is thrown when trying to retrieve non existent key

@@ -5,13 +5,14 @@
 #include <string>
 
 #include "memtable.h"
+#include "bp_directory.h"
 
 using namespace std;
 
 class KeyValueStore
 {
 public:
-  KeyValueStore(uint64_t memtable_size = 0);
+  KeyValueStore(int memtable_size = 0);
   void open_db(string db);
   void close_db();
   db_val_t get(db_key_t key);
@@ -19,13 +20,19 @@ public:
   vector<pair<db_key_t, db_val_t> > scan(db_key_t min_key, db_key_t max_key);
   void read_from_file(const char *filename);
   void print();
+  int get_page_number(int kv_position);
   void set_get_method(string get_method);
+  void set_page_size(int page_size);
 
 private:
   Memtable memtable;
-  int num_sst;
+  BPDirectory buffer_pool;
+
+  int sst_num;
   int memtable_size;
+  int page_size;
   string get_method;
+  
   void serialize();
   void write_to_file(vector<pair<db_key_t, db_val_t> > vector_mt);
   int binary_search_smallest(int file, db_key_t key);
