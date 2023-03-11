@@ -240,3 +240,11 @@ void BPDirectory::print_directory() {
         entry->second->print_list();
     }
 }
+
+void BPDirectory::free_all_pages()
+{
+    for (auto entry = this->directory.begin(); entry != this->directory.end(); ++entry)
+    {
+        entry->second->free_all_pages();
+    }
+}
