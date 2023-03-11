@@ -28,13 +28,29 @@ BPDirectory::BPDirectory(string eviction_policy, int initial_num_bits, int maxim
     }
 }
 
-void BPDirectory::insert_page(int page, string sst_name, int page_number)
+void BPDirectory::insert_page(pair<db_key_t, db_val_t> *page_content, int num_pairs_in_page, string sst_name, int page_number)
 {
     string source = sst_name + to_string(page_number);
     string directory_key = this->hash_string(source);
 
-    // TODO AMY: hash actual 4kb page
-    this->directory[directory_key]->add_page_frame(page, sst_name, page_number);
+    // Malloc memory for the page
+    pair<db_key_t, db_val_t> *malloc_page = (pair<db_key_t, db_val_t> *)malloc(num_pairs_in_page * sizeof(pair<db_key_t, db_val_t>));
+    for (int i = 0; i < num_pairs_in_page; ++i)
+    {
+        db_key_t key = page_content[i].first;
+        db_val_t val = page_content[i].second;
+        new (&malloc_page[i]) pair<db_key_t, db_val_t>(key, val);
+    }
+
+    // // NOTE to Jason: this is how to free the memory, could be useful for eviction stuff
+    // // free the memory when you're done
+    // for (int i = 0; i < num_pairs_in_page; ++i)
+    // {
+    //     malloc_page[i].~pair<db_key_t, db_val_t>();
+    // }
+    // free(malloc_page);
+
+    this->directory[directory_key]->add_page_frame(malloc_page, num_pairs_in_page, sst_name, page_number);
     this->current_num_pages += 1;
 
     if (this->current_num_pages >= this->maximum_num_pages) {
@@ -54,12 +70,11 @@ void BPDirectory::insert_page(int page, string sst_name, int page_number)
     }
 }
 
-int BPDirectory::get_page(string sst_name, int page_number)
+pair<db_key_t, db_val_t> *BPDirectory::get_page(string sst_name, int page_number)
 {
     string source = sst_name + to_string(page_number);
     string directory_key = this->hash_string(source);
 
-    // TODO AMY: hash actual 4kb page
     return this->directory[directory_key]->find_page_frame(sst_name, page_number);
 }
 
@@ -164,7 +179,7 @@ string BPDirectory::hash_string(string source)
 
 void BPDirectory::set_policy(string policy) {
     if (policy.compare("LRU") != 0 || policy.compare("clock") != 0) {
-        cout << "This is not a valid policy. Please pass in LRU or clock." << endl;
+        throw invalid_argument("This is not a valid policy. Please pass in LRU or clock.");
     } else {
         this->policy = policy;
     }
@@ -186,7 +201,7 @@ void BPDirectory::rehash_linked_list(map<string, shared_ptr<BPLinkedList> > *dir
     {
         string source = current->sst_name + to_string(current->page_number);
         string directory_key = this->hash_string(source);
-        key_to_new_linkedlist[directory_key]->add_page_frame(current->page_content, current->sst_name, current->page_number);
+        key_to_new_linkedlist[directory_key]->add_page_frame(current->page_content, current->num_pairs_in_page, current->sst_name, current->page_number);
         current = current->next;
     }
 

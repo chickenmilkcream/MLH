@@ -7,13 +7,17 @@
 
 using namespace std;
 
+typedef int64_t db_key_t;
+typedef int64_t db_val_t;
+
 class PageFrame
 {
 public:
-    PageFrame(int page_content, string sst_name, int page_number);
+    PageFrame(pair<db_key_t, db_val_t> *page_content, int num_pairs_in_page, string sst_name, int page_number);
     string sst_name;
     int page_number;
-    int page_content;
+    int num_pairs_in_page;
+    pair<db_key_t, db_val_t> *page_content;
     PageFrame *next;
 };
 

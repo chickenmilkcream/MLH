@@ -6,11 +6,11 @@ BPLinkedList::BPLinkedList()
     size = 0;
 }
 
-void BPLinkedList::add_page_frame(int page_content, string sst_name, int page_number)
+void BPLinkedList::add_page_frame(pair<db_key_t, db_val_t> *page_content, int num_pairs_in_page, string sst_name, int page_number)
 {
     this->size ++;
 
-    PageFrame *newNode = new PageFrame(page_content, sst_name, page_number);
+    PageFrame *newNode = new PageFrame(page_content, num_pairs_in_page, sst_name, page_number);
     if (head == nullptr)
     {
         head = newNode;
@@ -26,7 +26,7 @@ void BPLinkedList::add_page_frame(int page_content, string sst_name, int page_nu
     }
 }
 
-int BPLinkedList::find_page_frame(string sst_name, int page_number)
+pair<db_key_t, db_val_t> *BPLinkedList::find_page_frame(string sst_name, int page_number)
 {
     PageFrame *current = head;
     while (current != nullptr)
@@ -47,7 +47,13 @@ void BPLinkedList::print_list()
 
     while (current != nullptr)
     {
-        std::cout << current->page_content << " ";
+        cout << "--- start page" << endl;
+        for (int i = 0; i < current->num_pairs_in_page; i++)
+        {
+            std::cout << "Key: " << current->page_content[i].first << " Value: " << current->page_content[i].second << std::endl;
+        }
+        cout << "--- end page" << endl;
+        
         current = current->next;
     }
     std::cout << std::endl;
