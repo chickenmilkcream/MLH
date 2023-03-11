@@ -5,6 +5,7 @@
 #include <string>
 #include <map>
 #include <memory>
+#include <vector>
 
 #include "xxhash.h"
 #include "bp_linkedlist.h"
