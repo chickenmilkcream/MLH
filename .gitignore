@@ -2,4 +2,6 @@
 .idea/*
 *.o
 main
+*_experiments
+*_tests
 *.bin
