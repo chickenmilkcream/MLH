@@ -11,10 +11,10 @@
 
 using namespace std;
 
-KeyValueStore::KeyValueStore(int memtable_size)
+KeyValueStore::KeyValueStore(int memtable_size, string eviction_policy, int initial_num_bits, int maximum_num_bits, int maximum_num_pages)
 {
     this->memtable = Memtable(memtable_size);
-    this->buffer_pool = BPDirectory("clock", 3, 10, 100);
+    this->buffer_pool = BPDirectory(eviction_policy, initial_num_bits, maximum_num_bits, maximum_num_pages);
 
     this->sst_num = 1;
     this->memtable_size = memtable_size;
@@ -63,32 +63,19 @@ db_val_t KeyValueStore::get(db_key_t key)
             // TODO AMY: change binary functions so that it looks for 4kb pages at a time instead of individual key-value pairs
 
             int position;
+            int page;
             if (this->get_method.compare("binary") == 0)
             {
-                position = binary_search_exact(file, key);
+                page = binary_search_page_containing_target(s, file, key);
+                if (page == -1) continue;
+                position = binary_search_target_within_page(file, page, key);
             }
             else if (this->get_method.compare("btree") == 0)
             {
                 cout << "TODO JUN" << endl;
             }
 
-            if (position == -1)
-                continue; // If we can't find min_key in the file
-            
-            // // Get the page number given the position of the key-value pair
-            // int page_number = get_page_number(position);
-            // // Check in the buffer for the associated page
-            // try
-            // {
-            //     // Try to look in the memtable for the key
-            //     int page = this->buffer_pool.get_page(s, page_number);
-            // }
-            // catch (std::out_of_range &e)
-            // {
-            //     // Couldn't find it in the buffer pool
-            //     // Store the page and return the value
-            //     this->buffer_pool.insert_page(page_number, s, page_number);
-            // }
+            if (position == -1) continue; // If we can't find min_key in the file
 
             // Jump to the position in the file with the key
             off_t offset = position * pairSize;
@@ -235,17 +222,63 @@ int KeyValueStore::binary_search_smallest(int file, db_key_t target)
     return result;
 }
 
-int KeyValueStore::binary_search_exact(int file, db_key_t target)
+int KeyValueStore::binary_search_page_containing_target(string sst_name, int file, db_key_t target)
 {
-    // TODO AMY: Change binary search to look like https://piazza.com/class/lckjb9lrfaa57i/post/68
+    // This function finds the page that contains the target
+
+    // Compute the number of key-value pairs in the file
+    int pairSize = (sizeof(db_key_t) + sizeof(db_val_t));
+    int numPairsInPage = this->page_size / pairSize;
+    int numPages = lseek(file, 0, SEEK_END) / (this->page_size);
+
+    // Binary search loop
+    int low = 0, high = numPages - 1, result = numPages;
+    while (low <= high)
+    {
+        int mid = (low + high) / 2;
+        pair<db_key_t, db_val_t> pairs[numPairsInPage];
+
+        // // Check in the buffer for the page
+        // try
+        // {
+        //     pairs = this->buffer_pool.get_page(sst_name, mid);
+        // }
+        // catch (std::out_of_range &e)
+        // {
+        //     // Couldn't find it in the buffer pool
+        //     // Store the page and return the value
+        //     pread(file, pairs, this->page_size, mid * this->page_size);
+        //     this->buffer_pool.insert_page(pairs, sst_name, mid);
+        // }
+        pread(file, pairs, this->page_size, mid * this->page_size);
+
+        if (target >= pairs[0].first && target <= pairs[numPairsInPage - 1].first)
+        {
+            return mid;
+        }
+        else if (pairs[0].first > target)
+        {
+            result = mid;
+            high = mid - 1;
+        }
+        else
+        {
+            low = mid + 1;
+        }
+    }
+    return -1;
+}
+
+int KeyValueStore::binary_search_target_within_page(int file, int page, db_key_t target)
+{
     // This function finds the position of the key that is equal to target
 
     // Compute the number of key-value pairs in the file
     int pairSize = (sizeof(db_key_t) + sizeof(db_val_t));
-    int numPairs = lseek(file, 0, SEEK_END) / pairSize;
+    int numPairs = this->page_size / pairSize;
 
     // Binary search loop
-    int low = 0, high = numPairs - 1;
+    int low = page * numPairs, high = low + numPairs - 1;
     while (low <= high)
     {
         int mid = (low + high) / 2;
@@ -273,7 +306,7 @@ void KeyValueStore::set_get_method(string get_method)
 {
     if (get_method.compare("binary") != 0 || get_method.compare("btree") != 0)
     {
-        cout << "This is not a valid get method. Please pass in binary or btree." << endl;
+        throw invalid_argument("This is not a valid get method. Please pass in binary or btree.");
     }
     else
     {
@@ -285,14 +318,14 @@ void KeyValueStore::set_page_size(int page_size)
 {
     if (page_size % 16 != 0)
     {
-        cout << "Please make sure that the page size you pass in is a factor of 16." << endl;
+        throw invalid_argument("Please make sure that the page size you pass in is a factor of 16.");
+    }
+    else if (this->memtable_size % page_size != 0)
+    {
+        throw invalid_argument("Please make sure that the SST (memtable_size) will fit an integer number of pages.");
     }
     else
     {
         this->page_size = page_size;
     }
-}
-
-int KeyValueStore::get_page_number(int kv_position) {
-    return kv_position / (this->page_size / 16);
 }

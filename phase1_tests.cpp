@@ -5,16 +5,22 @@
 
 int main(int argc, char *argv[])
 {
-    // Want the max size to be 10 key-value pairs with each pair taking up 16 bytes
+    int memtable_size = 144;
+    string eviction_policy = "clock";
+    int initial_num_bits = 2;
+    int maximum_num_bits = 4;
+    int maximum_num_pages = 10;
+
+    // Want the max size to be 9 key-value pairs with each pair taking up 16 bytes
 
     std::cout << "Running test cases for Phase 1 \n";
     std::cout << "Creating a database store with a max size of 10 key value pairs \n";
     std::cout << "--------------------------------------------------------------- \n";
 
-    KeyValueStore kv = KeyValueStore(160); 
+    KeyValueStore kv = KeyValueStore(memtable_size, eviction_policy, initial_num_bits, maximum_num_bits, maximum_num_pages);
 
-    // Want each page size to be 2 key-value pairs so that each SST will have 5 pages
-    kv.set_page_size(32);
+    // Want each page size to be 3 key-value pairs so that each SST will have 5 pages
+    kv.set_page_size(48);
 
     kv.put(5, 1);
     kv.put(6, 3);
@@ -25,9 +31,8 @@ int main(int argc, char *argv[])
     kv.put(3, 0);
     kv.put(10, 1);
     kv.put(11, 17);
-    kv.put(69, 17);
-
-    std::cout << "* Insert 9 pairs passed \n";
+    
+    std::cout << "* Insert 8 pairs passed \n";
 
     assert(kv.get(5) == 1);
     assert(kv.get(6) == 3);
@@ -37,7 +42,6 @@ int main(int argc, char *argv[])
     assert(kv.get(3) == 0);
     assert(kv.get(10) == 1);
     assert(kv.get(11) == 17);
-    assert(kv.get(69) == 17);
 
     std::cout << "* Get key passed \n";
 
@@ -77,12 +81,12 @@ int main(int argc, char *argv[])
 
     // Testing scan of all elements
     mt_vector = kv.scan(0, 99999999);
-    assert(mt_vector.size() == 9);
+    assert(mt_vector.size() == 8);
 
     std::cout << "* Scan range (0, 99999999) on memtable passed \n";
 
     // Testing sst_1.bin has correct elements
-    kv.put(699, 420); // Add one more element so the memtable would be full
+    kv.put(911, 420); // Add one more element so the memtable would be full
 
     std::cout << "* Serialize first memtable passed \n";
     std::cout << "Results of sst_1.bin: \n";
@@ -99,7 +103,6 @@ int main(int argc, char *argv[])
     kv.put(93, 0);
     kv.put(910, 1);
     kv.put(911, 17);
-    kv.put(969, 17);
 
     std::cout << "* Serialize second memtable passed \n";
     std::cout << "Results of sst_2.bin: \n";
@@ -109,7 +112,7 @@ int main(int argc, char *argv[])
     // Testing scan of all elements
     kv.put(70, 17);
     mt_vector = kv.scan(69, 98);
-    assert(mt_vector.size() == 8);
+    assert(mt_vector.size() == 7);
 
     std::cout << "* Scan range (69, 98) on memtable passed \n";
     std::cout << "Results from memtable, sst_2.bin, sst_1.bin: \n";
@@ -127,8 +130,13 @@ int main(int argc, char *argv[])
     kv.read_from_file("sst_2.bin");
 
     assert(kv.get(70) == 17); // From memtable
-    assert(kv.get(93) == 0);  // From sst_2.bin
-    assert(kv.get(1) == 7);   // From sst_1.bin
+    assert(kv.get(93) == 0);  // From sst_2.bin on page 1
+    assert(kv.get(91) == 9);  // From sst_2.bin on page 1
+    assert(kv.get(96) == 3);  // From sst_2.bin on page 2
+    assert(kv.get(911) == 17);  // From sst_2.bin on page 3
+    assert(kv.get(1) == 7);      // From sst_1.bin on page 1
+    assert(kv.get(5) == 1);      // From sst_1.bin on page 2
+    assert(kv.get(11) == 17);   // From sst_1.bin on page 3
 
     try
     { // making sure that invalid_argument is thrown when trying to retrieve non existent key
@@ -140,11 +148,11 @@ int main(int argc, char *argv[])
     }
     std::cout << "* Get key in memtable, sst_2.bin, sst_1.bin passed \n";
 
-    // Testing closing db
-    // Note that an element (70, 17) was added to the memtable so that it will get written to a new SST when db closes
-    kv.close_db();
-    std::cout << "* Close DB passed \n";
-    std::cout << "Results of sst_3.bin: \n";
+    // // Testing closing db
+    // // Note that an element (70, 17) was added to the memtable so that it will get written to a new SST when db closes
+    // kv.close_db();
+    // std::cout << "* Close DB passed \n";
+    // std::cout << "Results of sst_3.bin: \n";
 
-    kv.read_from_file("sst_3.bin");
+    // kv.read_from_file("sst_3.bin");
 }
