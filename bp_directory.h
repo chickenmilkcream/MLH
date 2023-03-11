@@ -16,8 +16,8 @@ class BPDirectory
 {
 public:
     BPDirectory(string eviction_policy = "clock", int initial_num_bits = 0, int maximum_num_bits = 0, int maximum_num_pages = 0);
-    void insert_page(int page, string sst_name, int page_number);
-    int get_page(string sst_name, int page_number);
+    void insert_page(pair<db_key_t, db_val_t> *page_content, int num_pairs_in_page, string sst_name, int page_number);
+    pair<db_key_t, db_val_t> *get_page(string sst_name, int page_number);
     void extend_directory();
     void evict_directory();
     void shrink_directory(int new_maximum_num_bits);

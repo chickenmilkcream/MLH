@@ -10,6 +10,14 @@ int main(int argc, char *argv[])
     int initial_num_bits = 2;
     int maximum_num_bits = 4;
     int maximum_num_pages = 10;
+    int num_pairs_in_page = 1; // ideally, I would like to have more pairs, but I don't know how to do that with vector<pair<db_key_t, db_val_t>* >, the memory thing when I try to access page_content[i] gets weird...
+
+    vector<pair<db_key_t, db_val_t> > page_content;
+    for (auto i = 0; i != 12; ++i)
+    {
+        page_content.push_back(make_pair(i, i));
+    }
+    
 
     std::cout << "Running test cases for Phase 2 \n";
     std::cout << "--------------------------------------------------------------- \n";
@@ -27,7 +35,7 @@ int main(int argc, char *argv[])
 
     for (auto entry = 0; entry != 8; ++entry)
     {
-        bpd.insert_page(page_number, sst_name, page_number);
+        bpd.insert_page(&page_content[entry], num_pairs_in_page, sst_name, page_number);
         page_number++;
     }
 
@@ -42,11 +50,10 @@ int main(int argc, char *argv[])
     std::cout << "* Add several page frames passed \n";
     std::cout << "--------------------------------------------------------------- \n";
 
-    bpd.insert_page(page_number, sst_name, page_number);
-    // bpd.print_directory();
-    
+    bpd.insert_page(&page_content[8], num_pairs_in_page, sst_name, page_number);
+
     page_number++;
-    bpd.insert_page(page_number, sst_name, page_number);
+    bpd.insert_page(&page_content[9], num_pairs_in_page, sst_name, page_number);
     bpd.print_directory();
 
     assert(bpd.current_num_bits == initial_num_bits + 1);
@@ -62,7 +69,7 @@ int main(int argc, char *argv[])
     assert(bpd.directory["111"]->size == 1);
     assert(bpd.directory["010"] == bpd.directory["011"]);
 
-    std::cout << "* Expanding directory entries passed when max page number reached \n";
+    // std::cout << "* Expanding directory entries passed when max page number reached \n";
     std::cout << "* Finding entries sharing linkedlists passed when rehashing long linkedlists \n";
     std::cout << "* Rehashing long linkedlists passed when expanding directory entries \n";
     std::cout << "* Function get_keys_sharing_linkedlist passed \n";
@@ -71,9 +78,9 @@ int main(int argc, char *argv[])
     std::cout << "--------------------------------------------------------------- \n";
 
     page_number++;
-    bpd.insert_page(page_number, sst_name, page_number);
+    bpd.insert_page(&page_content[10], num_pairs_in_page, sst_name, page_number);
     page_number++;
-    bpd.insert_page(page_number, sst_name, page_number);
+    bpd.insert_page(&page_content[11], num_pairs_in_page, sst_name, page_number);
     bpd.print_directory();
 
     assert(bpd.directory["010"]->size == 0);
@@ -83,18 +90,18 @@ int main(int argc, char *argv[])
     std::cout << "* Function insert_page passed \n";
     std::cout << "--------------------------------------------------------------- \n";
 
-    assert(bpd.get_page(sst_name, 1) == 1);
-    assert(bpd.get_page(sst_name, 2) == 2);
-    assert(bpd.get_page(sst_name, 3) == 3);
-    assert(bpd.get_page(sst_name, 4) == 4);
-    assert(bpd.get_page(sst_name, 5) == 5);
-    assert(bpd.get_page(sst_name, 6) == 6);
-    assert(bpd.get_page(sst_name, 7) == 7);
-    assert(bpd.get_page(sst_name, 8) == 8);
-    assert(bpd.get_page(sst_name, 9) == 9);
-    assert(bpd.get_page(sst_name, 10) == 10);
-    assert(bpd.get_page(sst_name, 11) == 11);
-    assert(bpd.get_page(sst_name, 12) == 12);
+    assert(bpd.get_page(sst_name, 1)->first == 0);
+    assert(bpd.get_page(sst_name, 2)->first == 1);
+    assert(bpd.get_page(sst_name, 3)->first == 2);
+    assert(bpd.get_page(sst_name, 4)->first == 3);
+    assert(bpd.get_page(sst_name, 5)->first == 4);
+    assert(bpd.get_page(sst_name, 6)->first == 5);
+    assert(bpd.get_page(sst_name, 7)->first == 6);
+    assert(bpd.get_page(sst_name, 8)->first == 7);
+    assert(bpd.get_page(sst_name, 9)->first == 8);
+    assert(bpd.get_page(sst_name, 10)->first == 9);
+    assert(bpd.get_page(sst_name, 11)->first == 10);
+    assert(bpd.get_page(sst_name, 12)->first == 11);
 
     try
     { // making sure that out_of_range is thrown when trying to retrieve non page
