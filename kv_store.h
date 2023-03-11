@@ -22,10 +22,10 @@ public:
   void print();
   void set_get_method(string get_method);
   void set_page_size(int page_size);
+  BPDirectory buffer_pool;
 
 private:
   Memtable memtable;
-  BPDirectory buffer_pool;
 
   int sst_num;
   int memtable_size;

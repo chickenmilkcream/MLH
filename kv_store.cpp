@@ -31,7 +31,7 @@ void KeyValueStore::open_db(string db)
 void KeyValueStore::close_db()
 {
     this->serialize();
-    // TODO TEAM: discuss with team what else to do here
+    this->buffer_pool.free_all_pages();
 }
 
 db_val_t KeyValueStore::get(db_key_t key)
@@ -54,13 +54,6 @@ db_val_t KeyValueStore::get(db_key_t key)
             std::string s = "sst_" + to_string(i) + ".bin";
             int file = open(s.c_str(), O_RDONLY);
             if (file == -1) continue; // If we can't find open the file
-            
-            // TODO AMY: implement the logic for 
-            // if page in BP: return it 
-            // otherwise: add it to the BP after getting it
-            // Also the same thing in the binary search functions
-
-            // TODO AMY: change binary functions so that it looks for 4kb pages at a time instead of individual key-value pairs
 
             int position;
             int page;
@@ -228,7 +221,7 @@ int KeyValueStore::binary_search_page_containing_target(string sst_name, int fil
 
     // Compute the number of key-value pairs in the file
     int pairSize = (sizeof(db_key_t) + sizeof(db_val_t));
-    int numPairsInPage = this->page_size / pairSize;
+    int num_pairs_in_page = this->page_size / pairSize;
     int numPages = lseek(file, 0, SEEK_END) / (this->page_size);
 
     // Binary search loop
@@ -236,23 +229,23 @@ int KeyValueStore::binary_search_page_containing_target(string sst_name, int fil
     while (low <= high)
     {
         int mid = (low + high) / 2;
-        pair<db_key_t, db_val_t> pairs[numPairsInPage];
+        pair<db_key_t, db_val_t> pairs[num_pairs_in_page];
 
-        // // Check in the buffer for the page
-        // try
-        // {
-        //     pairs = this->buffer_pool.get_page(sst_name, mid);
-        // }
-        // catch (std::out_of_range &e)
-        // {
-        //     // Couldn't find it in the buffer pool
-        //     // Store the page and return the value
-        //     pread(file, pairs, this->page_size, mid * this->page_size);
-        //     this->buffer_pool.insert_page(pairs, sst_name, mid);
-        // }
-        pread(file, pairs, this->page_size, mid * this->page_size);
+        // Check in the buffer for the page
+        try
+        {
+            pair<db_key_t, db_val_t> *result = this->buffer_pool.get_page(sst_name, mid);
+            memcpy(pairs, result, num_pairs_in_page * sizeof(pair<db_key_t, db_val_t>));
+        }
+        catch (std::out_of_range &e)
+        {
+            // Couldn't find it in the buffer pool
+            // Store the page and return the value
+            pread(file, pairs, this->page_size, mid * this->page_size);
+            this->buffer_pool.insert_page(pairs, num_pairs_in_page, sst_name, mid);
+        }
 
-        if (target >= pairs[0].first && target <= pairs[numPairsInPage - 1].first)
+        if (target >= pairs[0].first && target <= pairs[num_pairs_in_page - 1].first)
         {
             return mid;
         }

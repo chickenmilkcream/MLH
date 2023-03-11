@@ -26,6 +26,7 @@ public:
     void print_directory();
     vector<string> get_keys_sharing_linkedlist(map<string, shared_ptr<BPLinkedList> > directory, string key);
     string hash_string(string source);
+    void free_all_pages();
     
     string policy;
     int initial_num_bits;

@@ -53,8 +53,23 @@ void BPLinkedList::print_list()
             std::cout << "Key: " << current->page_content[i].first << " Value: " << current->page_content[i].second << std::endl;
         }
         cout << "--- end page" << endl;
-        
+
         current = current->next;
     }
     std::cout << std::endl;
+}
+
+void BPLinkedList::free_all_pages()
+{
+    PageFrame *current = head;
+    while (current != nullptr)
+    {
+        PageFrame *next = current->next;
+        for (int i = 0; i < current->num_pairs_in_page; ++i)
+        {
+            current->page_content[i].~pair<db_key_t, db_val_t>();
+        }
+        free(current);
+        current = next;
+    }
 }
