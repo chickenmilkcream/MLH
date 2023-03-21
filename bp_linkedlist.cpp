@@ -54,7 +54,7 @@ void BPLinkedList::print_list()
         cout << "--- start page" << endl;
         for (int i = 0; i < current->num_pairs_in_page; i++)
         {
-            std::cout << "Key: " << current->page_content[i].first << " Value: " << current->page_content[i].second << std::endl;
+            std::cout << "Key: " << current->page_content[i].first << " Value: " << current->page_content[i].second << " Clock Reference bit: " << current->get_reference_bit() << std::endl;
         }
         cout << "--- end page" << endl;
 

@@ -63,7 +63,7 @@ int main(int argc, char *argv[]) {
 
     page_number++;
     bpd.insert_page(&page_content[9], num_pairs_in_page, sst_name, page_number);
-//    bpd.print_directory();
+    bpd.print_directory();
 
     assert(bpd.current_num_bits == initial_num_bits + 1);
     assert(bpd.maximum_num_items_threshold == maximum_num_items_threshold * 2);
@@ -78,13 +78,7 @@ int main(int argc, char *argv[]) {
     assert(bpd.directory["111"]->size == 1);
     assert(bpd.directory["010"] == bpd.directory["011"]);
 
-
-
     std::cout << "passed amy's tests. this is not a woman moment \n testing eviction now    \n";
-
-
-
-//    bpd.use_item()
 
     for (auto i = 10; i != 16; i++) {
         page_number++;
@@ -98,15 +92,17 @@ int main(int argc, char *argv[]) {
 
     // insert 3 more pages to test eviction
     // now page 1 should get evicted but not 2-4
-    bpd.print_directory();
+    // bpd.print_directory();
+    bpd.insert_page(&page_content[16], num_pairs_in_page, sst_name, page_number);
+    bpd.insert_page(&page_content[17], num_pairs_in_page, sst_name, page_number);
 
-    for (auto i = 16; i != 19; i++) {
-        page_number++;
-        cout << "inserting page " << page_number << endl;
+    // for (auto i = 16; i != 19; i++) {
+    //     page_number++;
+    //     cout << "inserting page " << page_number << endl;
 
-        bpd.insert_page(&page_content[i], num_pairs_in_page, sst_name, page_number);
-    }
-    // TODO test clock eviction
+    //     bpd.insert_page(&page_content[i], num_pairs_in_page, sst_name, page_number);
+    // }
+    // // TODO test clock eviction
 
 
 //    cout << bpd.get_page(sst_name, 1) << endl;

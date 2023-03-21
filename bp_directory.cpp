@@ -15,17 +15,17 @@ using namespace std;
 
 BPDirectory::BPDirectory(string eviction_policy, int initial_num_bits, int maximum_bp_size, int maximum_num_items_threshold)
 {
-    this->policy = eviction_policy;
+    this->policy = eviction_policy;                                       // This is the eviction polivy, should be "LRU" or "clock"
 
-    this->initial_num_bits = initial_num_bits;
-    this->current_num_bits = initial_num_bits;
+    this->initial_num_bits = initial_num_bits;                            // This is the initial number of prefix bits in the directory
+    this->current_num_bits = initial_num_bits;                            // This tracks the current number of prefix bits in the directory
 
-    this->current_bp_size = 0;
-    this->maximum_bp_size = maximum_bp_size; // This is in terms of the max number of bytes that the buffer pool can contain before eviction policy should kick in
+    this->current_bp_size = 0;                                            // This is the total number of bytes of items currently in the buffer pool
+    this->maximum_bp_size = maximum_bp_size;                              // This is the max number of bytes that the buffer pool can contain before eviction policy should kick in
     
-    this->current_num_items = 0;
-    this->maximum_num_items_threshold = maximum_num_items_threshold;
-    this->page_id = 0; // the total number of pages we've interacted before (placeholder value)
+    this->current_num_items = 0;                                          // This is the total number of items currently in the buffer pool
+    this->maximum_num_items_threshold = maximum_num_items_threshold;      // This is the maximum number of items we can have in the buffer pool before expansion, which results in doubling
+    this->page_id = 0;                                                    // The total number of pages we've interacted before (placeholder value)
 
     for (const string &prefix : generate_binary_strings(this->initial_num_bits))
     {
@@ -125,10 +125,7 @@ void BPDirectory::insert_page(pair<db_key_t, db_val_t> *page_content, int num_pa
     }
 
 //    cout << "evicting until under max bp size" << endl;
-    evict_until_under_max_bp_size();
-    // TODO
-    // if current_bp_size > max_bp_size:
-    // call evict_one_page_item api and update the current_bp_size until it's under the max_bp_size
+    this->evict_until_under_max_bp_size();
 
 //    cout << "checking if we need to rehash" << endl;
     if (this->current_num_items >= this->maximum_num_items_threshold) {
@@ -162,15 +159,12 @@ void BPDirectory::evict_until_under_max_bp_size() {
         if (pageToEvict != nullptr) {
             this->current_num_items--;
             this->current_bp_size -= sizeof(PageFrame);
-            cout << "Evicting page " << pageToEvict->page_number << " from SST " << pageToEvict->sst_name << endl;
-
+            // cout << "Evicting page " << pageToEvict->page_number << " from SST " << pageToEvict->sst_name << endl;
             this->evict_page(pageToEvict);
         }
-        cout << "curr size: " << this->current_bp_size << " max size: " << this->maximum_bp_size << endl;
+        // cout << "curr size: " << this->current_bp_size << " max size: " << this->maximum_bp_size << endl;
     }
 }
-
-
 
 void BPDirectory::mark_item_as_used(PageFrame* pageFrame) {
     if (this->policy == "LRU") {

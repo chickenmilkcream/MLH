@@ -22,7 +22,6 @@ int main(int argc, char *argv[]) {
         page_content.push_back(make_pair(i, i));
     }
 
-//
     std::cout << "Running test cases for LRU phase 2 \n";
     std::cout << "--------------------------------------------------------------- \n";
 
@@ -129,11 +128,21 @@ int main(int argc, char *argv[]) {
     }
     std::cout << "after getting page 16-20 \n";
     bpd.lru_cache->print_list();
+
+    std::cout << "testing increasing directory \n";
+    assert(bpd.current_bp_size == 16 * sizeof(PageFrame));
+    bpd.set_maximum_bp_size(32 * sizeof(PageFrame));
+    assert(bpd.maximum_bp_size == 32 * sizeof(PageFrame));
+    assert(bpd.current_bp_size == 16 * sizeof(PageFrame));
+
+    std::cout << "should expect to see no changes. new lru cache state: \n";
+    bpd.lru_cache->print_list();
+
     std::cout << "testing shrink directory \n";
     assert(bpd.current_bp_size == 16*sizeof(PageFrame));
-
     bpd.set_maximum_bp_size(8*sizeof(PageFrame));
     assert(bpd.current_bp_size == 8*sizeof(PageFrame));
+
     std::cout << "evicted half of directory. new lru cache state: \n";
     bpd.lru_cache->print_list();
 

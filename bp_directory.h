@@ -45,6 +45,7 @@ public:
 
     shared_ptr<LRUCache> lru_cache;
     shared_ptr<ClockBitmap> clock_bitmap;
+    int clock_hand_key;
 
     void set_maximum_bp_size(int value);
 
@@ -56,7 +57,6 @@ private:
 
     void evict_until_under_max_bp_size();
 
-    int clock_hand_key;
     PageFrame* clock_hand_location;
     vector<string> directory_keys;
 
