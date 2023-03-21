@@ -80,7 +80,7 @@ int main(int argc, char *argv[]) {
     bpd.set_maximum_num_items(16);
 
 
-//    bpd.use_item()
+//    bpd.mark_item_as_used()
 
     for (auto i = 10; i != 16; i++) {
         page_number++;

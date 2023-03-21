@@ -47,11 +47,18 @@ public:
     shared_ptr<LRUCache> lru_cache;
     shared_ptr<ClockBitmap> clock_bitmap;
 
+    void set_maximum_bp_size(int value);
+
 private:
     vector<string> generate_binary_strings(int n, string str = "");
 
     void evict_page(PageFrame* pageToEvict);
-    void use_item(PageFrame *pageFrame);
+    void mark_item_as_used(PageFrame *pageFrame);
+
+    void evict_until_under_max_bp_size();
+
+    int clock_hand_key;
+    int clock_hand_index;
 };
 
 #endif

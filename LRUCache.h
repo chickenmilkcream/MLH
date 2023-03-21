@@ -11,10 +11,8 @@
 
 class LRUCache {
 public:
-    LRUCache(int capacity);
-    PageFrame *put(int key, PageFrame *value);
-
-    void set_capacity(int val);
+    LRUCache();
+    void put(int key, PageFrame *value);
 
     void print_list();
     struct CacheNode {
@@ -27,14 +25,14 @@ public:
     CacheNode * get(int key);
     CacheNode* head;
     CacheNode* tail;
-    void use_item(PageFrame *pageFrame);
+    void mark_item_as_used(PageFrame *pageFrame);
+
+    PageFrame * evict_one_page_item();
 
 private:
     void remove(CacheNode* node);
     void moveToFront(CacheNode* node);
     std::unordered_map<int, CacheNode*> cache;
-    int capacity;
-
 
 };
 

@@ -32,19 +32,27 @@ BPDirectory::BPDirectory(string eviction_policy, int initial_num_bits, int maxim
         this->directory[prefix] = make_shared<BPLinkedList>();
     }
 
-    this->lru_cache = make_shared<LRUCache>(this->maximum_num_items_threshold + 10000); // TODO get rid of this param
-    this->clock_bitmap = make_shared<ClockBitmap>(this->maximum_num_items_threshold + 10000);
+    this->lru_cache = make_shared<LRUCache>();
+//    this->clock_bitmap = make_shared<ClockBitmap>(this->maximum_num_items_threshold + 10000);
+    this->clock_hand_key = 0;
+    this->clock_hand_index = 0;
+}
+
+void BPDirectory::set_maximum_bp_size(int value)
+{
+    this->maximum_bp_size = value;
+    evict_until_under_max_bp_size();
 }
 
 void BPDirectory::set_maximum_num_items(int value)
 {
     this->maximum_num_items_threshold = value;
-    if (this->policy == "LRU") {
-        this->lru_cache->set_capacity(value);
-    }
-    else {
-        this->clock_bitmap->set_capacity(value);
-    }
+//    if (this->policy == "LRU") {
+//        this->lru_cache->set_capacity(value);
+//    }
+//    else {
+//        this->clock_bitmap->set_capacity(value);
+//    }
 }
 
 void BPDirectory::insert_page(pair<db_key_t, db_val_t> *page_content, int num_pairs_in_page, string sst_name, int page_number)
@@ -67,23 +75,17 @@ void BPDirectory::insert_page(pair<db_key_t, db_val_t> *page_content, int num_pa
     this->page_id += 1;
     newNode->set_id(this->page_id);
 
-    // TODO
-    // if current_bp_size > max_bp_size: 
-    // call evict api and update the current_bp_size until it's under the max_bp_size
-
-    PageFrame *pageToEvict;
     if (this->policy == "LRU") {
-        pageToEvict = this->lru_cache->put(newNode->page_number, newNode);
+        this->lru_cache->put(newNode->page_number, newNode);
     }
     else { // clock
-        pageToEvict = this->clock_bitmap->put(this->page_id, newNode);
+        this->clock_bitmap->put(this->page_id, newNode);
     }
-    if (pageToEvict != nullptr) {
-        this->current_num_items--;
-        this->current_bp_size -= sizeof(PageFrame);
-        this->evict_page(pageToEvict);
-//        this->clock_bitmap->print_bitmap();
-    }
+
+    evict_until_under_max_bp_size();
+    // TODO
+    // if current_bp_size > max_bp_size:
+    // call evict_one_page_item api and update the current_bp_size until it's under the max_bp_size
 
     if (this->current_num_items >= this->maximum_num_items_threshold) {
         // This should rehash all the linkedlists greater than length 1 after expansion
@@ -104,9 +106,28 @@ void BPDirectory::insert_page(pair<db_key_t, db_val_t> *page_content, int num_pa
     }
 }
 
-void BPDirectory::use_item(PageFrame* pageFrame) {
+void BPDirectory::evict_until_under_max_bp_size() {
+    PageFrame* pageToEvict = nullptr;
+    while (this->current_bp_size > this->maximum_bp_size) {
+        if (this->policy == "LRU") {
+            pageToEvict = this->lru_cache->evict_one_page_item();
+        }
+        else { // clock
+//            pageToEvict = this->clock_bitmap->evict();
+        }
+        if (pageToEvict != nullptr) {
+            this->current_num_items--;
+            this->current_bp_size -= sizeof(PageFrame);
+            this->evict_page(pageToEvict);
+        }
+    }
+}
+
+
+
+void BPDirectory::mark_item_as_used(PageFrame* pageFrame) {
     if (this->policy == "LRU") {
-        this->lru_cache->use_item(pageFrame);
+        this->lru_cache->mark_item_as_used(pageFrame);
     }
     else { // clock
         this->clock_bitmap->use_item(pageFrame);
@@ -119,7 +140,7 @@ PageFrame* BPDirectory::get_page(string sst_name, int page_number)
     string directory_key = this->hash_string(source);
 
     PageFrame* pageFrame = this->directory[directory_key]->find_page_frame(sst_name, page_number);
-    this->use_item(pageFrame);
+    this->mark_item_as_used(pageFrame);
     return pageFrame;
 }
 
@@ -157,14 +178,14 @@ void BPDirectory::evict_page(PageFrame* pageFrame) {
     {
         pageFrame->page_content[i].~pair<db_key_t, db_val_t>();
     }
-    free(pageFrame);
+//    free(pageFrame);
 }
 
 void BPDirectory::edit_directory_size(int new_maximum_bp_size)
 {
     while (this->current_bp_size > new_maximum_bp_size)
     {   
-        // TODO evict items until it fits
+        // TODO evict_one_page_item items until it fits
         // this->evict_directory();
         // this->current_bp_size -= whatever got evicted
     }

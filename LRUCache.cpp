@@ -7,9 +7,9 @@
 //using namespace std;
 
 
-LRUCache::LRUCache(int capacity) : capacity(capacity), head(nullptr), tail(nullptr) {}
+LRUCache::LRUCache() :head(nullptr), tail(nullptr) {}
 
-void LRUCache::use_item(PageFrame *pageFrame)
+void LRUCache::mark_item_as_used(PageFrame *pageFrame)
 {
     if (pageFrame == nullptr) {
         return;
@@ -30,23 +30,32 @@ void LRUCache::use_item(PageFrame *pageFrame)
     moveToFront(node);
 }
 
-void::LRUCache::set_capacity(int val) {
-    this->capacity = val;
+
+
+PageFrame * LRUCache::evict_one_page_item() {
+    if (tail == nullptr) {
+        return nullptr;
+    }
+    int key = tail->key;
+    PageFrame *pageFrame = tail->value;
+    cache.erase(key);
+    remove(tail);
+    return pageFrame;
 }
 
-PageFrame * LRUCache::put(int key, PageFrame *value) {
-    PageFrame* pageFrame = nullptr;
+void LRUCache::put(int key, PageFrame *value) {
     auto it = cache.find(key);
     if (it != cache.end()) {
         CacheNode* node = it->second;
         node->value = value; // update value
         moveToFront(node);
     } else {
-        if (cache.size() >= capacity) {
-            cache.erase(tail->key);
-            pageFrame = tail->value;
-            remove(tail);
-        }
+//        if (cache.size() >= capacity) {
+////            cache.erase(tail->key);
+////            pageFrame = tail->value;
+////            remove(tail);
+//            evict_one_page_item();
+//        }
         CacheNode* node = new CacheNode(key, value);
         cache[key] = node;
         if (head == nullptr) {
@@ -58,7 +67,6 @@ PageFrame * LRUCache::put(int key, PageFrame *value) {
             head = node;
         }
     }
-    return pageFrame;
 }
 
 void LRUCache::remove(CacheNode* node) {
@@ -72,8 +80,8 @@ void LRUCache::remove(CacheNode* node) {
     } else {
         node->next->prev = node->prev;
     }
-    cout << "LRU evicting page number " << node->value->get_page_number() << endl;
-    this->print_list();
+//    cout << "LRU evicting page number " << node->value->get_page_number() << endl;
+//    this->print_list();
     delete node;
 }
 

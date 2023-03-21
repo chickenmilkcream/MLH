@@ -25,7 +25,7 @@ void ClockBitmap::set_capacity(int val) {
             this->bitmap.push_back(nullptr);
         }
     } else if (this->capacity > val) {
-        //TODO: evict pages
+        //TODO: evict_one_page_item pages
     }
     this->capacity = val;
 }

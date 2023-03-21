@@ -21,6 +21,7 @@ public:
     PageFrame *next;
     int clock_bit;
     int id;
+    int size;
     int get_reference_bit();
     void set_reference_bit(int bit);
     int get_id();
