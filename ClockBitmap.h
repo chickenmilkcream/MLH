@@ -15,7 +15,7 @@ public:
     PageFrame * get(int key);
     PageFrame *put(int key, PageFrame *value);
     void set_capacity(int val);
-    void use_page(PageFrame* pageFrame);
+    void use_item(PageFrame *pageFrame);
     vector<PageFrame*> evict_pages();
     void print_bitmap();
 

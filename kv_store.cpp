@@ -10,14 +10,14 @@
 
 using namespace std;
 
-KeyValueStore::KeyValueStore(int memtable_size, string eviction_policy, int initial_num_bits, int maximum_num_bits, int maximum_num_pages)
+KeyValueStore::KeyValueStore(int memtable_size, string eviction_policy, int initial_num_bits, int maximum_bp_size, int maximum_num_items_threshold)
 {
     this->memtable = Memtable(memtable_size);
-    this->buffer_pool = BPDirectory(eviction_policy, initial_num_bits, maximum_num_bits, maximum_num_pages);
+    this->buffer_pool = BPDirectory(eviction_policy, initial_num_bits, maximum_bp_size, maximum_num_items_threshold);
 
     this->sst_num = 1;
     this->memtable_size = memtable_size;
-    this->page_size = 4064;
+    this->page_size = 4096;
     this->get_method = "binary";
 }
 

@@ -13,17 +13,18 @@
 
 using namespace std;
 
-BPDirectory::BPDirectory(string eviction_policy, int initial_num_bits, int maximum_num_bits, int maximum_num_pages)
+BPDirectory::BPDirectory(string eviction_policy, int initial_num_bits, int maximum_bp_size, int maximum_num_items_threshold)
 {
     this->policy = eviction_policy;
 
     this->initial_num_bits = initial_num_bits;
     this->current_num_bits = initial_num_bits;
-    this->maximum_num_bits = maximum_num_bits;
 
-    this->current_num_pages = 0;
-    this->maximum_num_pages = maximum_num_pages;
-    this->absolute_maximum_num_pages = 69420; // This is a placeholder value
+    this->current_bp_size = 0;
+    this->maximum_bp_size = maximum_bp_size; // This is in terms of the max number of bytes that the buffer pool can contain before eviction policy should kick in
+    
+    this->current_num_items = 0;
+    this->maximum_num_items_threshold = maximum_num_items_threshold;
     this->page_id = 0; // the total number of pages we've interacted before (placeholder value)
 
     for (const string &prefix : generate_binary_strings(this->initial_num_bits))
@@ -31,13 +32,13 @@ BPDirectory::BPDirectory(string eviction_policy, int initial_num_bits, int maxim
         this->directory[prefix] = make_shared<BPLinkedList>();
     }
 
-    this->lru_cache = make_shared<LRUCache>(this->absolute_maximum_num_pages);
-    this->clock_bitmap = make_shared<ClockBitmap>(this->absolute_maximum_num_pages);
+    this->lru_cache = make_shared<LRUCache>(this->maximum_num_items_threshold); // TODO get rid of this param
+    this->clock_bitmap = make_shared<ClockBitmap>(this->maximum_num_items_threshold);
 }
 
-void BPDirectory::set_max_num_pages(int value)
+void BPDirectory::set_maximum_num_items(int value)
 {
-    this->absolute_maximum_num_pages = value;
+    this->maximum_num_items_threshold = value;
     if (this->policy == "LRU") {
         this->lru_cache->set_capacity(value);
     }
@@ -50,6 +51,7 @@ void BPDirectory::insert_page(pair<db_key_t, db_val_t> *page_content, int num_pa
 {
     string source = sst_name + to_string(page_number);
     string directory_key = this->hash_string(source);
+    this->current_bp_size += sizeof(PageFrame);
 
     // Malloc memory for the page
     pair<db_key_t, db_val_t> *malloc_page = (pair<db_key_t, db_val_t> *)malloc(num_pairs_in_page * sizeof(pair<db_key_t, db_val_t>));
@@ -61,9 +63,13 @@ void BPDirectory::insert_page(pair<db_key_t, db_val_t> *page_content, int num_pa
     }
 
     PageFrame* newNode = this->directory[directory_key]->add_page_frame(malloc_page, num_pairs_in_page, sst_name, page_number);
-    this->current_num_pages += 1;
+    this->current_num_items += 1;
     this->page_id += 1;
     newNode->set_id(this->page_id);
+
+    // TODO
+    // if current_bp_size > max_bp_size: 
+    // call evict api and update the current_bp_size until it's under the max_bp_size
 
     PageFrame *pageToEvict;
     if (this->policy == "LRU") {
@@ -73,13 +79,13 @@ void BPDirectory::insert_page(pair<db_key_t, db_val_t> *page_content, int num_pa
         pageToEvict = this->clock_bitmap->put(this->page_id, newNode);
     }
     if (pageToEvict != nullptr) {
-        this->current_num_pages--;
+        this->current_num_items--;
+        this->current_bp_size -= sizeof(PageFrame);
         this->evict_page(pageToEvict);
 //        this->clock_bitmap->print_bitmap();
-
     }
 
-    if (this->current_num_pages >= this->maximum_num_pages) {
+    if (this->current_num_items >= this->maximum_num_items_threshold) {
         // This should rehash all the linkedlists greater than length 1 after expansion
         this->extend_directory();
         return;
@@ -98,18 +104,14 @@ void BPDirectory::insert_page(pair<db_key_t, db_val_t> *page_content, int num_pa
     }
 }
 
-
-void BPDirectory::use_page(PageFrame* pageFrame) {
-
+void BPDirectory::use_item(PageFrame* pageFrame) {
     if (this->policy == "LRU") {
-//        cout << "LRU using page number " << pageFrame->page_number << endl;
-        this->lru_cache->use_page(pageFrame);
+        this->lru_cache->use_item(pageFrame);
     }
     else { // clock
-        this->clock_bitmap->use_page(pageFrame);
+        this->clock_bitmap->use_item(pageFrame);
     }
 }
-
 
 PageFrame* BPDirectory::get_page(string sst_name, int page_number)
 {
@@ -117,73 +119,35 @@ PageFrame* BPDirectory::get_page(string sst_name, int page_number)
     string directory_key = this->hash_string(source);
 
     PageFrame* pageFrame = this->directory[directory_key]->find_page_frame(sst_name, page_number);
-    this->use_page(pageFrame);
+    this->use_item(pageFrame);
     return pageFrame;
 }
 
 void BPDirectory::extend_directory()
 {
     this->current_num_bits ++;
-    this->maximum_num_pages *= 2;
-
-    if (this->current_num_bits >= this->maximum_num_bits) {
-        // TODO JASON: clarify when it will evict until?
-        this->evict_directory();
-    }
+    this->maximum_num_items_threshold *= 2;
 
     // Double the size of the directory and make it point to the same linkedlist
     map<string, shared_ptr<BPLinkedList> > new_directory;
     for (const auto &pair : this->directory)
     {
-        string entry = pair.first;
+        string prefix = pair.first;
         shared_ptr<BPLinkedList> linkedlist = pair.second;
-        new_directory[entry + "0"] = linkedlist;
-        new_directory[entry + "1"] = linkedlist;
+        new_directory[prefix + "0"] = linkedlist;
+        new_directory[prefix + "1"] = linkedlist;
 
         if (linkedlist->size > 1)
         {
-            vector<string> shared_keys = this->get_keys_sharing_linkedlist(new_directory, entry + "0"); // Shared keys should only be entry + "0" and entry + "1"
-            this->rehash_linked_list(&new_directory, entry + "0", shared_keys);
+            vector<string> shared_keys = this->get_keys_sharing_linkedlist(new_directory, prefix + "0"); // Shared keys should only be prefix + "0" and prefix + "1"
+            this->rehash_linked_list(&new_directory, prefix + "0", shared_keys);
         }
     }
     this->directory = new_directory;
     }
 
-void BPDirectory::evict_directory() {
-
-    // // NOTE to Jason: this is how to free the memory, could be useful for eviction stuff
-    // // free the memory when you're done
-    // for (int i = 0; i < num_pairs_in_page; ++i)
-    // {
-    //     malloc_page[i].~pair<db_key_t, db_val_t>();
-    // }
-    // free(malloc_page);
-
-    // TODO JASON: might have to modify current_num_bits and max_num_pages and current_num_pages
-    this->maximum_num_pages /= 2;
-
-    if (this->policy.compare("LRU") == 0) {
-        this->evict_directory_lru();
-    } else if (this->policy.compare("clock") == 0) {
-        this->evict_directory_clock();
-    } else {
-        cout << "There is not a valid policy in place. Please set policy as LRU or Clock." << endl;
-    }
-}
-
-void BPDirectory::evict_directory_lru()
-{
-    cout << "TODO JASON LRU" << endl;
-}
-
-void BPDirectory::evict_directory_clock()
-{
-    cout << "TODO JASON Clock" << endl;
-}
-
 void BPDirectory::evict_page(PageFrame* pageFrame) {
     // remove the pageFrame from the directory hash map and linked list
-//    std::cout << "current num pages is " << this->current_num_pages << "maximum number of pages is " << this->absolute_maximum_num_pages << "; evicting page number " << pageFrame->page_number << std::endl;
     string source = pageFrame->sst_name + to_string(pageFrame->page_number);
     string directory_key = this->hash_string(source);
     this->directory[directory_key]->remove_page_frame(pageFrame);
@@ -196,24 +160,18 @@ void BPDirectory::evict_page(PageFrame* pageFrame) {
     free(pageFrame);
 }
 
-
-void BPDirectory::edit_directory_size(int new_maximum_num_bits) {
-
-    if (new_maximum_num_bits < this->current_num_bits)
-    {
-        // TODO TEAM: figure out confusion with max_size being actual size or number of prefix bits ahh
-
-        // Evict extra entries, but which ones? How many times do we evict? current_num_bits - new_maximum_num_bits??
-        // When do we stop evicting? -> what do we set current_num_bits to be?
-        while (this->current_num_bits > new_maximum_num_bits) {
-            this->evict_directory();
-            this->current_num_bits --;
-        }
-
-        // TODO AMY: figure out how to shrink the directory table keys
+void BPDirectory::edit_directory_size(int new_maximum_bp_size)
+{
+    while (this->current_bp_size > new_maximum_bp_size)
+    {   
+        // TODO evict items until it fits
+        // this->evict_directory();
+        // this->current_bp_size -= whatever got evicted
     }
+    // TODO AMY: figure out how to shrink the directory table keys
+    // might not do this lol
 
-    this->maximum_num_bits = new_maximum_num_bits;
+    this->maximum_bp_size = new_maximum_bp_size;
 }
 
 vector<string> BPDirectory::generate_binary_strings(int n, string str)
@@ -272,9 +230,9 @@ void BPDirectory::rehash_linked_list(map<string, shared_ptr<BPLinkedList> > *dir
 
     for (const auto &pair : key_to_new_linkedlist)
     {
-        string entry = pair.first;
+        string prefix = pair.first;
         shared_ptr<BPLinkedList> linkedlist = pair.second;
-        (*directory)[entry] = linkedlist;
+        (*directory)[prefix] = linkedlist;
     }
 }
 
@@ -285,12 +243,12 @@ vector<string> BPDirectory::get_keys_sharing_linkedlist(map<string, shared_ptr<B
 
     for (const auto &pair : directory)
     {
-        string entry = pair.first;
+        string prefix = pair.first;
         shared_ptr<BPLinkedList> linkedlist = pair.second;
 
         if (linkedlist == shared_linkedlist)
         {
-            shared_keys.push_back(entry);
+            shared_keys.push_back(prefix);
         }
     }
 
@@ -298,19 +256,19 @@ vector<string> BPDirectory::get_keys_sharing_linkedlist(map<string, shared_ptr<B
 }
 
 void BPDirectory::print_directory() {
-    cout << "The number of pages in the directory: " << this->current_num_pages << endl;
-    for (auto entry = this->directory.begin(); entry != this->directory.end(); ++entry)
+    cout << "The number of pages in the directory: " << this->current_num_items << endl;
+    for (auto prefix = this->directory.begin(); prefix != this->directory.end(); ++prefix)
     {
-        std::cout << "The directory entry: " << entry->first << std::endl;
-        entry->second->print_list();
+        std::cout << "The directory prefix: " << prefix->first << std::endl;
+        prefix->second->print_list();
     }
 }
 
 void BPDirectory::free_all_pages()
 {
-    for (auto entry = this->directory.begin(); entry != this->directory.end(); ++entry)
+    for (auto prefix = this->directory.begin(); prefix != this->directory.end(); ++prefix)
     {
-        entry->second->free_all_pages();
+        prefix->second->free_all_pages();
     }
 }
 

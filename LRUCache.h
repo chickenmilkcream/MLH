@@ -27,9 +27,9 @@ public:
     CacheNode * get(int key);
     CacheNode* head;
     CacheNode* tail;
-    void use_page(PageFrame *pageFrame);
-private:
+    void use_item(PageFrame *pageFrame);
 
+private:
     void remove(CacheNode* node);
     void moveToFront(CacheNode* node);
     std::unordered_map<int, CacheNode*> cache;

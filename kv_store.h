@@ -12,7 +12,7 @@ using namespace std;
 class KeyValueStore
 {
 public:
-    KeyValueStore(int memtable_size = 0, string eviction_policy = "clock", int initial_num_bits = 0, int maximum_num_bits = 0, int maximum_num_pages = 0);
+    KeyValueStore(int memtable_size = 0, string eviction_policy = "clock", int initial_num_bits = 0, int maximum_bp_size = 0, int maximum_num_items_threshold = 0);
     void open_db(string db);
     void close_db();
     db_val_t get(db_key_t key);

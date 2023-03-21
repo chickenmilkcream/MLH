@@ -8,8 +8,8 @@ int main(int argc, char *argv[])
     int memtable_size = 144;
     string eviction_policy = "clock";
     int initial_num_bits = 2;
-    int maximum_num_bits = 4;
-    int maximum_num_pages = 6;
+    int maximum_bp_size = 4;
+    int maximum_num_items_threshold = 6;
 
     // Want the max size to be 9 key-value pairs with each pair taking up 16 bytes
 
@@ -17,7 +17,7 @@ int main(int argc, char *argv[])
     std::cout << "Creating a database store with a max size of 10 key value pairs \n";
     std::cout << "--------------------------------------------------------------- \n";
 
-    KeyValueStore kv = KeyValueStore(memtable_size, eviction_policy, initial_num_bits, maximum_num_bits, maximum_num_pages);
+    KeyValueStore kv = KeyValueStore(memtable_size, eviction_policy, initial_num_bits, maximum_bp_size, maximum_num_items_threshold);
 
     // Want each page size to be 3 key-value pairs so that each SST will have 5 pages
     kv.set_page_size(48);

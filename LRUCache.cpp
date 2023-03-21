@@ -9,7 +9,8 @@
 
 LRUCache::LRUCache(int capacity) : capacity(capacity), head(nullptr), tail(nullptr) {}
 
-void LRUCache::use_page(PageFrame* pageFrame) {
+void LRUCache::use_item(PageFrame *pageFrame)
+{
     if (pageFrame == nullptr) {
         return;
     }

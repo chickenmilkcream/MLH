@@ -24,7 +24,7 @@ phase2_lru: clean $(OBJFILES) phase2_test_lru.o
 	$(CC) $(CFLAGS) -o phase2_test_lru $(OBJFILES) phase2_test_lru.o
 	./phase2_test_lru
 
-
+all_tests: clean phase1_tests clean phase2_clock clean phase2_lru clean
 
 %.o: %.cpp %.h
 	$(CC) $(CFLAGS) -c $<

@@ -50,7 +50,7 @@ PageFrame *ClockBitmap::put(int key, PageFrame *value) {
 }
 
 
-void ClockBitmap::use_page(PageFrame* pageFrame) {
+void ClockBitmap::use_item(PageFrame* pageFrame) {
     // set the reference bit of the page to 1
     pageFrame->set_reference_bit(1);
 }
