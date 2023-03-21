@@ -19,6 +19,14 @@ public:
     int num_pairs_in_page;
     pair<db_key_t, db_val_t> *page_content;
     PageFrame *next;
+    int clock_bit;
+    int id;
+    int get_reference_bit();
+    void set_reference_bit(int bit);
+    int get_id();
+    void set_id(int id);
+    int get_page_number();
+
 };
 
 #endif

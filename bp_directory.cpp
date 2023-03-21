@@ -1,6 +1,8 @@
 #include "bp_directory.h"
 #include "xxhash.h"
-
+#include "LRUCache.h"
+#include "bp_pageframe.h"
+#include "ClockBitmap.h"
 #include <iostream>
 #include <vector>
 #include <utility>
@@ -21,10 +23,26 @@ BPDirectory::BPDirectory(string eviction_policy, int initial_num_bits, int maxim
 
     this->current_num_pages = 0;
     this->maximum_num_pages = maximum_num_pages;
+    this->absolute_maximum_num_pages = 69420; // This is a placeholder value
+    this->page_id = 0; // the total number of pages we've interacted before (placeholder value)
 
     for (const string &prefix : generate_binary_strings(this->initial_num_bits))
     {
         this->directory[prefix] = make_shared<BPLinkedList>();
+    }
+
+    this->lru_cache = make_shared<LRUCache>(this->absolute_maximum_num_pages);
+    this->clock_bitmap = make_shared<ClockBitmap>(this->absolute_maximum_num_pages);
+}
+
+void BPDirectory::set_max_num_pages(int value)
+{
+    this->absolute_maximum_num_pages = value;
+    if (this->policy == "LRU") {
+        this->lru_cache->set_capacity(value);
+    }
+    else {
+        this->clock_bitmap->set_capacity(value);
     }
 }
 
@@ -42,22 +60,32 @@ void BPDirectory::insert_page(pair<db_key_t, db_val_t> *page_content, int num_pa
         new (&malloc_page[i]) pair<db_key_t, db_val_t>(key, val);
     }
 
-    // // NOTE to Jason: this is how to free the memory, could be useful for eviction stuff
-    // // free the memory when you're done
-    // for (int i = 0; i < num_pairs_in_page; ++i)
-    // {
-    //     malloc_page[i].~pair<db_key_t, db_val_t>();
-    // }
-    // free(malloc_page);
-
-    this->directory[directory_key]->add_page_frame(malloc_page, num_pairs_in_page, sst_name, page_number);
+    PageFrame* newNode = this->directory[directory_key]->add_page_frame(malloc_page, num_pairs_in_page, sst_name, page_number);
     this->current_num_pages += 1;
+    this->page_id += 1;
+    newNode->set_id(this->page_id);
+
+    PageFrame *pageToEvict;
+    if (this->policy == "LRU") {
+        pageToEvict = this->lru_cache->put(newNode->page_number, newNode);
+    }
+    else { // clock
+        pageToEvict = this->clock_bitmap->put(this->page_id, newNode);
+    }
+    if (pageToEvict != nullptr) {
+        this->current_num_pages--;
+        this->evict_page(pageToEvict);
+//        this->clock_bitmap->print_bitmap();
+
+    }
 
     if (this->current_num_pages >= this->maximum_num_pages) {
         // This should rehash all the linkedlists greater than length 1 after expansion
         this->extend_directory();
         return;
+    } else {
     }
+
 
     // Rehash as soon as chain length gets to be greater than 1 
     // Retrieved from: https://piazza.com/class/lckjb9lrfaa57i/post/78
@@ -70,7 +98,19 @@ void BPDirectory::insert_page(pair<db_key_t, db_val_t> *page_content, int num_pa
     }
 }
 
-pair<db_key_t, db_val_t> *BPDirectory::get_page(string sst_name, int page_number)
+
+void BPDirectory::use_page(PageFrame* pageFrame) {
+    if (this->policy == "LRU") {
+//        cout << "LRU using page number " << pageFrame->page_number << endl;
+        this->lru_cache->use_page(pageFrame);
+    }
+    else { // clock
+        this->clock_bitmap->use_page(pageFrame);
+    }
+}
+
+
+PageFrame* BPDirectory::get_page(string sst_name, int page_number)
 {
     string source = sst_name + to_string(page_number);
     string directory_key = this->hash_string(source);
@@ -107,7 +147,18 @@ void BPDirectory::extend_directory()
     }
 
 void BPDirectory::evict_directory() {
+
+    // // NOTE to Jason: this is how to free the memory, could be useful for eviction stuff
+    // // free the memory when you're done
+    // for (int i = 0; i < num_pairs_in_page; ++i)
+    // {
+    //     malloc_page[i].~pair<db_key_t, db_val_t>();
+    // }
+    // free(malloc_page);
+
     // TODO JASON: might have to modify current_num_bits and max_num_pages and current_num_pages
+    this->maximum_num_pages /= 2;
+
     if (this->policy.compare("LRU") == 0) {
         this->evict_directory_lru();
     } else if (this->policy.compare("clock") == 0) {
@@ -127,25 +178,36 @@ void BPDirectory::evict_directory_clock()
     cout << "TODO JASON Clock" << endl;
 }
 
-void BPDirectory::shrink_directory(int new_maximum_num_bits) {
+void BPDirectory::evict_page(PageFrame* pageFrame) {
+    // remove the pageFrame from the directory hash map and linked list
+//    std::cout << "current num pages is " << this->current_num_pages << "maximum number of pages is " << this->absolute_maximum_num_pages << "; evicting page number " << pageFrame->page_number << std::endl;
+    string source = pageFrame->sst_name + to_string(pageFrame->page_number);
+    string directory_key = this->hash_string(source);
+    this->directory[directory_key]->remove_page_frame(pageFrame);
 
-    if (new_maximum_num_bits >= this->maximum_num_bits) {
-        cout << "Please the new maximum num bits to be less than the current maximum num bits: " << this->maximum_num_bits << endl;
-        return;
+    // free the memory when you're done
+    for (int i = 0; i < pageFrame->num_pairs_in_page; ++i)
+    {
+        pageFrame->page_content[i].~pair<db_key_t, db_val_t>();
     }
+    free(pageFrame);
+}
+
+
+void BPDirectory::edit_directory_size(int new_maximum_num_bits) {
 
     if (new_maximum_num_bits < this->current_num_bits)
     {
         // TODO TEAM: figure out confusion with max_size being actual size or number of prefix bits ahh
-        // TODO TEAM: figure out what to do here
 
         // Evict extra entries, but which ones? How many times do we evict? current_num_bits - new_maximum_num_bits??
         // When do we stop evicting? -> what do we set current_num_bits to be?
-        this->evict_directory();
-        this->current_num_bits = new_maximum_num_bits;
+        while (this->current_num_bits > new_maximum_num_bits) {
+            this->evict_directory();
+            this->current_num_bits --;
+        }
 
-        // TODO AMY: decrement max_num_pages several times, should be taken care of in evict_directory
-        // TODO AMY: shrink the actual directory table hmmmmmm so confused here
+        // TODO AMY: figure out how to shrink the directory table keys
     }
 
     this->maximum_num_bits = new_maximum_num_bits;
@@ -248,3 +310,5 @@ void BPDirectory::free_all_pages()
         entry->second->free_all_pages();
     }
 }
+
+

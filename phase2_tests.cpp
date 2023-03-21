@@ -6,7 +6,7 @@ int main(int argc, char *argv[])
 {
     string sst_name = "sst_1.bin";
     int page_number = 1;
-    string eviction_policy = "clock";
+    string eviction_policy = "LRU";
     int initial_num_bits = 2;
     int maximum_num_bits = 4;
     int maximum_num_pages = 10;
@@ -90,18 +90,18 @@ int main(int argc, char *argv[])
     std::cout << "* Function insert_page passed \n";
     std::cout << "--------------------------------------------------------------- \n";
 
-    assert(bpd.get_page(sst_name, 1)->first == 0);
-    assert(bpd.get_page(sst_name, 2)->first == 1);
-    assert(bpd.get_page(sst_name, 3)->first == 2);
-    assert(bpd.get_page(sst_name, 4)->first == 3);
-    assert(bpd.get_page(sst_name, 5)->first == 4);
-    assert(bpd.get_page(sst_name, 6)->first == 5);
-    assert(bpd.get_page(sst_name, 7)->first == 6);
-    assert(bpd.get_page(sst_name, 8)->first == 7);
-    assert(bpd.get_page(sst_name, 9)->first == 8);
-    assert(bpd.get_page(sst_name, 10)->first == 9);
-    assert(bpd.get_page(sst_name, 11)->first == 10);
-    assert(bpd.get_page(sst_name, 12)->first == 11);
+    assert(bpd.get_page(sst_name, 1)->page_content->first == 0);
+    assert(bpd.get_page(sst_name, 2)->page_content->first == 1);
+    assert(bpd.get_page(sst_name, 3)->page_content->first == 2);
+    assert(bpd.get_page(sst_name, 4)->page_content->first == 3);
+    assert(bpd.get_page(sst_name, 5)->page_content->first == 4);
+    assert(bpd.get_page(sst_name, 6)->page_content->first == 5);
+    assert(bpd.get_page(sst_name, 7)->page_content->first == 6);
+    assert(bpd.get_page(sst_name, 8)->page_content->first == 7);
+    assert(bpd.get_page(sst_name, 9)->page_content->first == 8);
+    assert(bpd.get_page(sst_name, 10)->page_content->first == 9);
+    assert(bpd.get_page(sst_name, 11)->page_content->first == 10);
+    assert(bpd.get_page(sst_name, 12)->page_content->first == 11);
 
     try
     { // making sure that out_of_range is thrown when trying to retrieve non page
