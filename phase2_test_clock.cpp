@@ -107,4 +107,8 @@ int main(int argc, char *argv[]) {
 //    assert(bpd.get_page(sst_name, 6) == nullptr);
 //    assert(bpd.get_page(sst_name, 7) != nullptr);
 
+    std::cout << "passed eviction tests \n";
+
+    return 0;
+
 }

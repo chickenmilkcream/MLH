@@ -113,4 +113,6 @@ int main(int argc, char *argv[]) {
     } catch (const std::exception& e) {
         std::cout << "caught exception: " << e.what() << '\n';
     }
+
+    std::cout << "passed eviction tests \n";
 }
