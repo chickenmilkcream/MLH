@@ -18,30 +18,35 @@ int main(int argc, char *argv[]) {
     int num_pairs_in_page = 1; // ideally, I would like to have more pairs, but I don't know how to do that with vector<pair<db_key_t, db_val_t>* >, the memory thing when I try to access page_content[i] gets weird...
 
     vector<pair<db_key_t, db_val_t> > page_content;
-    for (auto i = 0; i != 64; ++i) {
+    for (auto i = 0; i != 20; ++i) {
         page_content.push_back(make_pair(i, i));
     }
 
 //
-//    std::cout << "Running test cases for Phase 2 \n";
-//    std::cout << "--------------------------------------------------------------- \n";
+    std::cout << "Running test cases for LRU phase 2 \n";
+    std::cout << "--------------------------------------------------------------- \n";
 
     BPDirectory bpd = BPDirectory(eviction_policy, initial_num_bits, maximum_bp_size, maximum_num_items_threshold);
+    bpd.set_maximum_bp_size(16*sizeof(PageFrame));
 
 
     assert(bpd.directory.size() == initial_num_bits ^ 2);
     assert(bpd.current_num_items == 0);
 
-//    bpd.print_directory();
+    bpd.print_directory();
 
-//    std::cout << "* Function generate_binary_strings passed \n";
-//    std::cout << "* Create directory passed \n";
-//    std::cout << "--------------------------------------------------------------- \n";
+    std::cout << "* Function generate_binary_strings passed \n";
+    std::cout << "* Create directory passed \n";
+    std::cout << "--------------------------------------------------------------- \n";
+
+//    std::cout << "before insertion curr bp size : " << bpd.current_bp_size << "\n";
 
     for (auto entry = 0; entry != 8; ++entry) {
         bpd.insert_page(&page_content[entry], num_pairs_in_page, sst_name, page_number);
         page_number++;
+//        std::cout << "curr bp size : " << bpd.current_bp_size << "page number " << page_number << "\n";
     }
+//    std::cout << "after insertion curr bp size : " << bpd.current_bp_size << "\n";
 
 //    bpd.print_directory();
     assert(bpd.current_num_items == 8);
@@ -50,9 +55,9 @@ int main(int argc, char *argv[]) {
     assert(bpd.directory["10"]->size == 3);
     assert(bpd.directory["11"]->size == 1);
 
-//    std::cout << "* Function hash_string passed \n";
-//    std::cout << "* Add several page frames passed \n";
-//    std::cout << "--------------------------------------------------------------- \n";
+    std::cout << "* Function hash_string passed \n";
+    std::cout << "* Add several page frames passed \n";
+    std::cout << "--------------------------------------------------------------- \n";
 
     bpd.insert_page(&page_content[8], num_pairs_in_page, sst_name, page_number);
 
@@ -77,10 +82,9 @@ int main(int argc, char *argv[]) {
 
     std::cout << "passed amy's tests. this is not a woman moment \n testing eviction now    \n";
 
-    bpd.set_maximum_num_items(16);
 
 
-//    bpd.mark_item_as_used()
+//    bpd.use_item()
 
     for (auto i = 10; i != 16; i++) {
         page_number++;
@@ -99,16 +103,52 @@ int main(int argc, char *argv[]) {
         bpd.insert_page(&page_content[i], num_pairs_in_page, sst_name, page_number);
     }
 
+//    cout << bpd.get_page(sst_name, 1) << endl;
 //    assert(bpd.get_page(sst_name, 1) == nullptr);
-//    assert(bpd.get_page(sst_name, 2) != nullptr);
-//    assert(bpd.get_page(sst_name, 3) != nullptr);
-//    assert(bpd.get_page(sst_name, 4) != nullptr);
-//    assert(bpd.get_page(sst_name, 5) == nullptr);
-//    assert(bpd.get_page(sst_name, 6) == nullptr);
-//    assert(bpd.get_page(sst_name, 7) != nullptr);
+    assert(bpd.get_page(sst_name, 2) != nullptr);
+    assert(bpd.get_page(sst_name, 3) != nullptr);
+    assert(bpd.get_page(sst_name, 4) != nullptr);
+    assert(bpd.get_page(sst_name, 7) != nullptr);
 
-    std::cout << "passed eviction tests \n";
+    try {
+        bpd.get_page(sst_name, 1);
+        bpd.get_page(sst_name, 5);
+        bpd.get_page(sst_name, 6);
+    } catch (const std::exception& e) {
+        std::cout << "caught exception: " << e.what() << '\n';
+    }
 
-    return 0;
+    std::cout << "bp size: " << bpd.current_bp_size << "\n";
+    assert(bpd.current_bp_size == 16*sizeof(PageFrame));
 
+    std::cout << "test getting page from middle of cache \n";
+    std::cout << "before getting page 16-20 \n";
+    bpd.lru_cache->print_list();
+    for (auto i = 16; i != 20; i++) {
+        bpd.get_page(sst_name, i);
+    }
+    std::cout << "after getting page 16-20 \n";
+    bpd.lru_cache->print_list();
+    std::cout << "testing shrink directory \n";
+    assert(bpd.current_bp_size == 16*sizeof(PageFrame));
+
+    bpd.set_maximum_bp_size(8*sizeof(PageFrame));
+    assert(bpd.current_bp_size == 8*sizeof(PageFrame));
+    std::cout << "evicted half of directory. new lru cache state: \n";
+    bpd.lru_cache->print_list();
+
+
+    for (auto i = 8; i != 16; i++) {
+        try {
+            bpd.get_page(sst_name, i);
+        } catch (const std::exception &e) {
+//            std::cout << "caught exception: " << e.what() << '\n';
+        }
+    }
+
+    for (auto i = 16; i != 20; i++) {
+        assert(bpd.get_page(sst_name, i) != nullptr);
+    }
+
+    std::cout << "passed lru test!  \n";
 }

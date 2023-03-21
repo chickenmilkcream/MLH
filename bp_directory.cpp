@@ -44,17 +44,6 @@ void BPDirectory::set_maximum_bp_size(int value)
     evict_until_under_max_bp_size();
 }
 
-void BPDirectory::set_maximum_num_items(int value)
-{
-    this->maximum_num_items_threshold = value;
-//    if (this->policy == "LRU") {
-//        this->lru_cache->set_capacity(value);
-//    }
-//    else {
-//        this->clock_bitmap->set_capacity(value);
-//    }
-}
-
 void BPDirectory::insert_page(pair<db_key_t, db_val_t> *page_content, int num_pairs_in_page, string sst_name, int page_number)
 {
     string source = sst_name + to_string(page_number);
@@ -179,20 +168,6 @@ void BPDirectory::evict_page(PageFrame* pageFrame) {
         pageFrame->page_content[i].~pair<db_key_t, db_val_t>();
     }
 //    free(pageFrame);
-}
-
-void BPDirectory::edit_directory_size(int new_maximum_bp_size)
-{
-    while (this->current_bp_size > new_maximum_bp_size)
-    {   
-        // TODO evict_one_page_item items until it fits
-        // this->evict_directory();
-        // this->current_bp_size -= whatever got evicted
-    }
-    // TODO AMY: figure out how to shrink the directory table keys
-    // might not do this lol
-
-    this->maximum_bp_size = new_maximum_bp_size;
 }
 
 vector<string> BPDirectory::generate_binary_strings(int n, string str)
