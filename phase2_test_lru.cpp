@@ -89,7 +89,7 @@ int main(int argc, char *argv[]) {
 
     // use pages 2-4 to test eviction
     for (auto i = 2; i != 5; i++) {
-        bpd.use_page(bpd.get_page(sst_name, i));
+        bpd.get_page(sst_name, i);
     }
 
     // insert 3 more pages to test eviction

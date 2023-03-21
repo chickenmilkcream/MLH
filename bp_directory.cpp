@@ -100,6 +100,7 @@ void BPDirectory::insert_page(pair<db_key_t, db_val_t> *page_content, int num_pa
 
 
 void BPDirectory::use_page(PageFrame* pageFrame) {
+
     if (this->policy == "LRU") {
 //        cout << "LRU using page number " << pageFrame->page_number << endl;
         this->lru_cache->use_page(pageFrame);
@@ -115,7 +116,9 @@ PageFrame* BPDirectory::get_page(string sst_name, int page_number)
     string source = sst_name + to_string(page_number);
     string directory_key = this->hash_string(source);
 
-    return this->directory[directory_key]->find_page_frame(sst_name, page_number);
+    PageFrame* pageFrame = this->directory[directory_key]->find_page_frame(sst_name, page_number);
+    this->use_page(pageFrame);
+    return pageFrame;
 }
 
 void BPDirectory::extend_directory()
