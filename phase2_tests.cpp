@@ -8,7 +8,7 @@ int main(int argc, char *argv[])
     int page_number = 1;
     string eviction_policy = "LRU";
     int initial_num_bits = 2;
-    int maximum_bp_size = 4;
+    int maximum_bp_size = 1000;
     int maximum_num_items_threshold = 10;
     int num_pairs_in_page = 1; // ideally, I would like to have more pairs, but I don't know how to do that with vector<pair<db_key_t, db_val_t>* >, the memory thing when I try to access page_content[i] gets weird...
 

@@ -16,15 +16,15 @@ phase2_tests: $(OBJFILES) phase2_tests.o
 	$(CC) $(CFLAGS) -o phase2_tests $(OBJFILES) phase2_tests.o
 	./phase2_tests
 
-phase2_clock: clean $(OBJFILES) phase2_test_clock.o
-	$(CC) $(CFLAGS) -o phase2_test_clock $(OBJFILES) phase2_test_clock.o
-	./phase2_test_clock
+phase2_clock: clean $(OBJFILES) phase2_clock_tests.o
+	$(CC) $(CFLAGS) -o phase2_clock_tests $(OBJFILES) phase2_clock_tests.o
+	./phase2_clock_tests
 
-phase2_lru: clean $(OBJFILES) phase2_test_lru.o
-	$(CC) $(CFLAGS) -o phase2_test_lru $(OBJFILES) phase2_test_lru.o
-	./phase2_test_lru
+phase2_lru: clean $(OBJFILES) phase2_lru_tests.o
+	$(CC) $(CFLAGS) -o phase2_lru_tests $(OBJFILES) phase2_lru_tests.o
+	./phase2_lru_tests
 
-all_tests: clean phase1_tests clean phase2_clock clean phase2_lru clean
+all_tests: clean phase1_tests clean phase2_tests clean phase2_clock clean phase2_lru clean
 
 %.o: %.cpp %.h
 	$(CC) $(CFLAGS) -c $<

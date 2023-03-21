@@ -32,8 +32,8 @@ BPDirectory::BPDirectory(string eviction_policy, int initial_num_bits, int maxim
         this->directory[prefix] = make_shared<BPLinkedList>();
     }
 
-    this->lru_cache = make_shared<LRUCache>(this->maximum_num_items_threshold); // TODO get rid of this param
-    this->clock_bitmap = make_shared<ClockBitmap>(this->maximum_num_items_threshold);
+    this->lru_cache = make_shared<LRUCache>(this->maximum_num_items_threshold + 10000); // TODO get rid of this param
+    this->clock_bitmap = make_shared<ClockBitmap>(this->maximum_num_items_threshold + 10000);
 }
 
 void BPDirectory::set_maximum_num_items(int value)
