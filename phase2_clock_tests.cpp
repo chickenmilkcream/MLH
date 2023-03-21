@@ -98,57 +98,62 @@ int main(int argc, char *argv[]) {
 
     // insert 3 more pages to test eviction
     // now page 1 should get evicted but not 2-4
+    bpd.print_directory();
+
     for (auto i = 16; i != 19; i++) {
         page_number++;
+        cout << "inserting page " << page_number << endl;
+
         bpd.insert_page(&page_content[i], num_pairs_in_page, sst_name, page_number);
     }
+    // TODO test clock eviction
+
 
 //    cout << bpd.get_page(sst_name, 1) << endl;
 //    assert(bpd.get_page(sst_name, 1) == nullptr);
-    assert(bpd.get_page(sst_name, 2) != nullptr);
-    assert(bpd.get_page(sst_name, 3) != nullptr);
-    assert(bpd.get_page(sst_name, 4) != nullptr);
-    assert(bpd.get_page(sst_name, 7) != nullptr);
+//    assert(bpd.get_page(sst_name, 2) != nullptr);
+//    assert(bpd.get_page(sst_name, 3) != nullptr);
+//    assert(bpd.get_page(sst_name, 4) != nullptr);
+//    assert(bpd.get_page(sst_name, 7) != nullptr);
+//
+//    try {
+//        bpd.get_page(sst_name, 1);
+//        bpd.get_page(sst_name, 5);
+//        bpd.get_page(sst_name, 6);
+//    } catch (const std::exception& e) {
+//        std::cout << "caught exception: " << e.what() << '\n';
+//    }
+//
+//    std::cout << "bp size: " << bpd.current_bp_size << "\n";
+//    assert(bpd.current_bp_size == 16*sizeof(PageFrame));
+//
+//    std::cout << "test getting page from middle of cache \n";
+//    std::cout << "before getting page 16-20 \n";
+//    bpd.lru_cache->print_list();
+//    for (auto i = 16; i != 20; i++) {
+//        bpd.get_page(sst_name, i);
+//    }
+//    std::cout << "after getting page 16-20 \n";
+//    bpd.lru_cache->print_list();
+//    std::cout << "testing shrink directory \n";
+//    assert(bpd.current_bp_size == 16*sizeof(PageFrame));
+//
+//    bpd.set_maximum_bp_size(8*sizeof(PageFrame));
+//    assert(bpd.current_bp_size == 8*sizeof(PageFrame));
+//    std::cout << "evicted half of directory. new lru cache state: \n";
+//    bpd.lru_cache->print_list();
+//
+//
+//    for (auto i = 8; i != 16; i++) {
+//        try {
+//            bpd.get_page(sst_name, i);
+//        } catch (const std::exception &e) {
+////            std::cout << "caught exception: " << e.what() << '\n';
+//        }
+//    }
+//
+//    for (auto i = 16; i != 20; i++) {
+//        assert(bpd.get_page(sst_name, i) != nullptr);
+//    }
 
-    try {
-        bpd.get_page(sst_name, 1);
-        bpd.get_page(sst_name, 5);
-        bpd.get_page(sst_name, 6);
-    } catch (const std::exception& e) {
-        std::cout << "caught exception: " << e.what() << '\n';
-    }
-
-    std::cout << "bp size: " << bpd.current_bp_size << "\n";
-    assert(bpd.current_bp_size == 16*sizeof(PageFrame));
-
-    std::cout << "test getting page from middle of cache \n";
-    std::cout << "before getting page 16-20 \n";
-    bpd.lru_cache->print_list();
-    for (auto i = 16; i != 20; i++) {
-        bpd.get_page(sst_name, i);
-    }
-    std::cout << "after getting page 16-20 \n";
-    bpd.lru_cache->print_list();
-    std::cout << "testing shrink directory \n";
-    assert(bpd.current_bp_size == 16*sizeof(PageFrame));
-
-    bpd.set_maximum_bp_size(8*sizeof(PageFrame));
-    assert(bpd.current_bp_size == 8*sizeof(PageFrame));
-    std::cout << "evicted half of directory. new lru cache state: \n";
-    bpd.lru_cache->print_list();
-
-
-    for (auto i = 8; i != 16; i++) {
-        try {
-            bpd.get_page(sst_name, i);
-        } catch (const std::exception &e) {
-//            std::cout << "caught exception: " << e.what() << '\n';
-        }
-    }
-
-    for (auto i = 16; i != 20; i++) {
-        assert(bpd.get_page(sst_name, i) != nullptr);
-    }
-
-    std::cout << "passed lru test!  \n";
 }

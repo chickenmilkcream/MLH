@@ -57,7 +57,12 @@ private:
     void evict_until_under_max_bp_size();
 
     int clock_hand_key;
-    int clock_hand_index;
+    PageFrame* clock_hand_location;
+    vector<string> directory_keys;
+
+    void update_directory_keys();
+
+    PageFrame *clock_find_victim();
 };
 
 #endif
