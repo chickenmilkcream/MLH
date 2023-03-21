@@ -5,7 +5,7 @@
 
 using namespace std;
 
-Memtable::Memtable(uint64_t memtable_size)
+Memtable::Memtable(size_t memtable_size)
 {
   this->max_size = memtable_size;
   this->size = 0;

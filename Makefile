@@ -12,6 +12,10 @@ phase1_tests: $(OBJFILES) phase1_tests.o
 	$(CC) $(CFLAGS) -o phase1_tests $(OBJFILES) phase1_tests.o
 	./phase1_tests
 
+phase2_tests: $(OBJFILES) phase2_tests.o
+	$(CC) $(CFLAGS) -o phase2_tests $(OBJFILES) phase2_tests.o
+	./phase2_tests
+
 %.o: %.cpp %.h
 	$(CC) $(CFLAGS) -c $<
 

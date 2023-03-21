@@ -26,7 +26,7 @@ db_val_t AVLTree::get(db_key_t key)
     }
     return this->root->get(key);
   }
-  return -1;
+  throw invalid_argument("Key not found");
 }
 
 void AVLTree::put(db_key_t key, db_val_t val)

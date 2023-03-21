@@ -4,6 +4,9 @@
 #include <memory>
 #include <vector>
 
+#define DB_KEY_MIN INT64_MIN
+#define DB_KEY_MAX INT64_MAX
+
 using namespace std;
 
 typedef int64_t db_key_t;
@@ -26,7 +29,7 @@ public:
 private:
   shared_ptr<AVLNode> left;
   shared_ptr<AVLNode> right;
-  unsigned int height;
+  size_t height;
 
   shared_ptr<AVLNode> rotate_left();
   shared_ptr<AVLNode> rotate_right();
