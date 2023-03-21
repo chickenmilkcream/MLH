@@ -18,7 +18,7 @@ void Memtable::put(db_key_t key, db_val_t val)
 {
   if (!this->tree.has(key))
   {
-    this->size += 16; // 16 bytes per key-value pair
+    this->size += sizeof(db_key_t) + sizeof(db_val_t); // 16 bytes per key-value pair
   }
   this->tree.put(key, val);
 }
