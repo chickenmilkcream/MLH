@@ -6,7 +6,7 @@ BPLinkedList::BPLinkedList()
     size = 0;
 }
 
-void BPLinkedList::add_page_frame(pair<db_key_t, db_val_t> *page_content, int num_pairs_in_page, string sst_name, int page_number)
+PageFrame* BPLinkedList::add_page_frame(pair<db_key_t, db_val_t> *page_content, int num_pairs_in_page, string sst_name, int page_number)
 {
     this->size ++;
 
@@ -24,15 +24,17 @@ void BPLinkedList::add_page_frame(pair<db_key_t, db_val_t> *page_content, int nu
         }
         current->next = newNode;
     }
+    return newNode;
 }
 
-pair<db_key_t, db_val_t> *BPLinkedList::find_page_frame(string sst_name, int page_number)
+PageFrame* BPLinkedList::find_page_frame(string sst_name, int page_number)
 {
     PageFrame *current = head;
     while (current != nullptr)
     {
         if (current->sst_name == sst_name && current->page_number == page_number) {
-            return current->page_content;
+
+            return current;
         }
         current = current->next;
     }
@@ -40,10 +42,12 @@ pair<db_key_t, db_val_t> *BPLinkedList::find_page_frame(string sst_name, int pag
     throw out_of_range("Couldn't find page frame in linkedlist");
 }
 
+
 void BPLinkedList::print_list()
 {
     PageFrame *current = head;
     std::cout << "The linkedlist: " << std::endl;
+    std::cout << current << std::endl;
 
     while (current != nullptr)
     {
@@ -72,4 +76,24 @@ void BPLinkedList::free_all_pages()
         free(current);
         current = next;
     }
+}
+
+void BPLinkedList::remove_page_frame(PageFrame *page_frame) {
+    PageFrame *current = head;
+    PageFrame *prev = nullptr;
+
+    while (current != nullptr) {
+        if (current->page_number == page_frame->page_number) {
+            if (prev == nullptr) {
+                head = current->next;
+            } else {
+                prev->next = current->next;
+            }
+            free(current);
+            return;
+        }
+        prev = current;
+        current = current->next;
+    }
+
 }

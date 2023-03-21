@@ -4,10 +4,9 @@
 #include <iostream>
 #include <vector>
 #include <utility>
-#include <fstream>
 #include <fcntl.h>
 #include <unistd.h>
-#include <fcntl.h>
+#include <cstring>
 
 using namespace std;
 
@@ -234,7 +233,7 @@ int KeyValueStore::binary_search_page_containing_target(string sst_name, int fil
         // Check in the buffer for the page
         try
         {
-            pair<db_key_t, db_val_t> *result = this->buffer_pool.get_page(sst_name, mid);
+            pair<db_key_t, db_val_t> *result = this->buffer_pool.get_page(sst_name, mid)->page_content;
             memcpy(pairs, result, num_pairs_in_page * sizeof(pair<db_key_t, db_val_t>));
         }
         catch (std::out_of_range &e)
@@ -275,7 +274,7 @@ int KeyValueStore::binary_search_target_within_page(int file, int page, db_key_t
     while (low <= high)
     {
         int mid = (low + high) / 2;
-        
+
         pair<db_key_t, db_val_t> pair;
         pread(file, &pair, pairSize, mid * pairSize);
 
