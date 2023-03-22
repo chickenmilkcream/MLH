@@ -7,12 +7,12 @@ import math
 # leaves = [10, 20, 40,   50, 70, 80,   90, 110, 120,   140, 160, 192,   240, 260]
 # leaves = [10, 20, 40,   50, 70, 80,   90, 110, 120,   140, 160, 192,   240, 260, 270]
 
-N = 19
+
 P = 4
 K = 1
 V = 1
 B = P // (K + V)
-MAGIC = 0xd6c5ac252a571e93f66f4a1a96b827a4
+N = B * (B + 1) + 1
 
 
 pairs = [(i, i) for i in range(N)]
@@ -30,18 +30,16 @@ def SST(pairs):
                     non_terminal_nodes[height - j - 1].append(pairs[i][0])
                 break
 
-    terminal_nodes = pairs
+    terminal_nodes = []
+    for pair in pairs:
+        terminal_nodes.append(pair[0])
+        terminal_nodes.append(pair[1])
 
     sizes = []
     for i in range(height - 1):
-        sizes.append(len(non_terminal_nodes[i]))
-    sizes.append(len(terminal_nodes))
-
-    # omit in C code!
-    # for level in levels:
-    #     while len(level) % P:
-    #         level.append(None)
-    #
+        sizes.append(len(non_terminal_nodes[i]) // K)
+    sizes.append(len(terminal_nodes) // (K + V))  
+    sizes.append(0)
     
     return height, non_terminal_nodes, terminal_nodes, sizes
 
@@ -54,21 +52,28 @@ def SST(pairs):
 
 height, non_terminal_nodes, terminal_nodes, sizes = SST(pairs)
 
-print('B =', B)
-print('N =', N)
+# print('B =', B)
+# print('N =', N)
 print('height =', height)
-for level, size in zip(non_terminal_nodes, sizes):
-    print(level, size)
-print(terminal_nodes)
+for i in range(len(non_terminal_nodes)):
+    while len(non_terminal_nodes[i]) % P:
+        non_terminal_nodes[i].append(None)
+while len(terminal_nodes) % P:
+    terminal_nodes.append(None)
+while len(sizes) % P:
+    sizes.append(None)
+
+pages = sizes + sum(non_terminal_nodes, []) + terminal_nodes
+
+s = ''
+for i in range(0, len(pages), P):
+    t = ''
+    for j in range(i, i + P):
+        t += ', ' + str(pages[j])
+    s += '[' + t[2:] + '] '
+print(s)
 
 
-meta = [MAGIC, height] + sizes
-# omit in C code!
-while len(meta) % P:
-    meta.append(None)
-#
-
-# pages = meta + sum(levels, [])
 
 # this is all a struct that fits into 4096 B
 # magic
@@ -100,42 +105,69 @@ def _binary_search(A, left, right, x):
 
 
 def find(pages, key):
-    start = 0 # in bytes
     offset = 0 # in bytes
 
-    page = pages[start:start + P]
-    start += P
-    meta = page
-    assert meta[0] == MAGIC
-    height = meta[1]
-    sizes = pages[2:height + 2]
+    sizes = []
 
-    page = pages[start + offset:start + offset + P]
+    page = pages[offset:offset + P]
+    offset += P
+    i = 0
+    while page[i]:
+        sizes.append(page[i])
+        i += 1
+        if i == P // 1:
+            page = pages[offset:offset + P]
+            offset += P
+            i = 0
+
+    start = offset
+    offset_j = 0
+
+    page = pages[offset:offset + P]
     i = 0
     while i < height - 1:
-        keys = page
-
-        # TODO: change to binary search
-        j = 0
-        while j < min(B, sizes[i] - offset / K) and keys[j] < key:
+        limit = min(offset_j + B, sizes[i] - (offset - start) // K)
+        j = offset_j
+        while j < limit and page[j] < key:
             j += 1
 
-        start += math.ceil(sizes[i] * K / P) * P
-        offset = offset * (B + 1) + j * B * K
-        if i == height - 2:
-            offset *= 2
+        end = start + math.ceil(sizes[i] * K / P) * P
+        intermediate = end + (((offset - start) // K + offset_j) // B * (B + 1) + (j - offset_j)) * B * (K if i < height - 2 else K + V)
+        offset = intermediate // P * P
+        offset_j = intermediate % P // K
+        start = end
 
+        page = pages[offset:offset + P]
         i += 1
 
-        page = pages[start + offset:start + offset + P]
-
-    return page[binary_search(page, key)]
+    return page
     
 
 
-        
-# print(find(pages, 8))
+print()
+print(find(pages, 5))
         
 
 # B = 2 and look for 8
 # [(5, 11), (1, 3), (7, 9), (13, None), (0, 1), (2, 3), (4, 5), (6, 7), (8, 9), (10, 11), (12, 13), (14, None)]
+
+
+def next(arr, target):
+    start = 0;
+    end = len(arr) - 1;
+ 
+    ans = -1;
+    while (start <= end):
+        mid = (start + end) // 2;
+        if (arr[mid] < target):
+            start = mid + 1;
+        else:
+            ans = mid;
+            end = mid - 1;
+ 
+    return ans;
+ 
+# Driver code
+if __name__ == '__main__':
+    arr = [1, 2, 3, 5, 8, 12];
+    print(next(arr, 4));

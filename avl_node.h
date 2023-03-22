@@ -12,6 +12,10 @@ using namespace std;
 typedef int64_t db_key_t;
 typedef int64_t db_val_t;
 
+#define DB_KEY_SIZE sizeof(db_key_t)
+#define DB_VAL_SIZE sizeof(db_val_t)
+#define DB_PAIR_SIZE (sizeof(db_key_t) + sizeof(db_val_t))
+
 class AVLNode : public enable_shared_from_this<AVLNode>
 {
 public:

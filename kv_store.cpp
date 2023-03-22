@@ -11,8 +11,16 @@
 
 using namespace std;
 
+long nceil(long x, long n) {
+    return ceil((double) x / n) * n;
+}
+
+long nfloor(long x, long n) {
+    return floor((double) x / n) * n;
+}
+
 ssize_t aligned_pwrite(int fd, const void *buf, size_t n, off_t offset) {
-    ssize_t size = ceil((double) n / PAGE_SIZE) * PAGE_SIZE;
+    size_t size = nceil(n, PAGE_SIZE);
     void *aligned_buf = aligned_alloc(PAGE_SIZE, size);
     for (size_t i = 0; i < n; i++) {
         ((char *) aligned_buf)[i] = ((char *) buf)[i];
@@ -23,7 +31,7 @@ ssize_t aligned_pwrite(int fd, const void *buf, size_t n, off_t offset) {
 }
 
 ssize_t aligned_pread(int fd, void *buf, size_t n, off_t offset) {
-    size_t size = ceil((double) n / PAGE_SIZE) * PAGE_SIZE;
+    size_t size = nceil(n, PAGE_SIZE);
     void *aligned_buf = aligned_alloc(PAGE_SIZE, size);
     ssize_t n_read = pread(fd, aligned_buf, size, offset);
     for (size_t i = 0; i < n; i++) {
@@ -32,6 +40,20 @@ ssize_t aligned_pread(int fd, void *buf, size_t n, off_t offset) {
     free(aligned_buf);
     return n_read;
 }
+
+// ssize_t binary_search(void *buf, db_key_t key, size_t low, size_t high) {
+//     size_t mid;
+//     while (low <= high) {
+//         mid = (low + high) / 2;
+        
+//         if (((pair<db_key_t, db_val_t> *) buf)[mid].first < key) {
+//             low = mid + 1;
+//         } else {
+//             high = mid - 1;
+//         }
+//     }
+//     return mid; // returns index of first element greater than or equal to key
+// }
 
 KeyValueStore::KeyValueStore(size_t memtable_size)
 {
@@ -53,144 +75,89 @@ void KeyValueStore::close_db()
 }
 
 db_val_t KeyValueStore::get(db_key_t key, search_alg alg)
-{
-    int pairSize = (sizeof(db_key_t) + sizeof(db_val_t));
+{    
+    size_t b = PAGE_SIZE / DB_PAIR_SIZE; // number of key-value pairs per page
 
     try {
         // Try to look in the memtable for the key
         return this->memtable.get(key);
     } catch (invalid_argument &e) {
-        if (alg == binary_search) {
-            // // Couldn't find it in the memtable
-            // // Loop through the SSTs from latest to oldest
-            // for (int i = this->num_sst - 1; i > 0; i--)
-            // {
-            //     // Open the file
-            //     const char *filename = ("sst_" + to_string(i) + ".bin").c_str();
-            //     int fd = open(filename, O_RDONLY | O_DIRECT | O_SYNC);
-            //     if (fd == -1) continue; // If we can't find open the file
+        // Couldn't find it in the memtable
+        // Loop through the SSTs from latest to oldest
+        for (int i = this->num_sst - 1; i > 0; i--) {
+            const char *filename = ("sst_" + to_string(i) + ".bin").c_str();
+            int fd = open(filename, O_RDONLY | O_DIRECT | O_SYNC);
 
-            //     int position = binary_search_exact(fd, key);
-            //     if (position == -1)
-            //         continue; // If we can't find min_key in the file
+            vector<size_t> sizes;
 
-            //     // Jump to the position in the file with the key
-            //     off_t offset = position * pairSize;
-            //     pair<db_key_t, db_val_t> kv_pair;
-            //     pread(fd, &kv_pair, pairSize, offset);
+            off_t offset = 0;
 
-            //     return kv_pair.second;
-            // }
-
-            // // After going through all the SSTs, we still can't find it
-            throw invalid_argument("Key not found");
-        } else if (alg == b_tree_search) {
-            size_t b = PAGE_SIZE / sizeof(pair<db_key_t, db_val_t>);
-
-            for (int i = this->num_sst - 1; i > 0; i--) {
-                vector<size_t> sizes;
-
-                const char *filename = ("sst_" + to_string(i) + ".bin").c_str();
-                int fd = open(filename, O_RDONLY | O_DIRECT | O_SYNC);
-                off_t offset = 0;
-
-                char buf[PAGE_SIZE];
-                aligned_pread(fd, buf, PAGE_SIZE, offset);
-                offset += PAGE_SIZE;
-                size_t j = 0;
-                while (((size_t *) buf)[j]) { // read until null terminator
-                    sizes.push_back(((size_t *) buf)[j]);
-                    j++;
-                    if (j == PAGE_SIZE / sizeof(size_t)) {
-                        aligned_pread(fd, buf, PAGE_SIZE, offset);
-                        offset += PAGE_SIZE;
-                        j = 0;
-                    }
-                }
-
-                size_t height = sizes.size();
-                off_t start = offset;
-
-                aligned_pread(fd, buf, PAGE_SIZE, offset);
-                cout << "reading page: " << offset / PAGE_SIZE << endl;
-                cout << "[";
-                for (size_t p = 0; p < b; p++) {
-                    cout << ((db_key_t *) buf)[p];
-                    if (j < sizes[i] - 1) {
-                        cout << ", ";
-                    }
-                }
-                cout << "]" << endl;
-
-                off_t remainder = 0;
-
-                j = 0;
-                while (j < height - 1) {
-                    size_t k = remainder;
-                    cout << "offset into page: " << k << endl;
-
-                    // TODO: change to in-memory binary search
-                    while (k < remainder + min(b, sizes[j] - (offset - start) / sizeof(db_key_t))
-                           && ((db_key_t *) buf)[k] < key) {
-                        k++;
-                    }
-
-                    cout << "the other min thing: " << sizes[j] - (offset - start) / sizeof(db_key_t) << endl;
-
-                    cout << "j: " << j << endl;
-                    cout << "k: " << k << endl;
-                    cout << "sizes[j]: " << sizes[j] << endl;
-
-                    off_t end = start + ceil((double) sizes[j] * sizeof(db_key_t) / PAGE_SIZE) * PAGE_SIZE;
-                    off_t m = end + ((offset - start) / sizeof(db_key_t) + k) * (b + 1) * (j < height - 2 ? sizeof(db_key_t) : sizeof(pair<db_key_t, db_val_t>));
-                    offset = m / PAGE_SIZE * PAGE_SIZE; // round down
-                    remainder = m % PAGE_SIZE / sizeof(db_key_t);
-                    start = end;
-
-                    cout << "m: " << m << endl;
-                    cout << "reading page: " << offset / PAGE_SIZE << endl;
+            char buf[PAGE_SIZE];
+            aligned_pread(fd, buf, PAGE_SIZE, offset);
+            offset += PAGE_SIZE;
+            size_t j = 0;
+            while (((size_t *) buf)[j]) { // read until null terminator
+                sizes.push_back(((size_t *) buf)[j]);
+                j++;
+                if (j == PAGE_SIZE / sizeof(size_t)) {
                     aligned_pread(fd, buf, PAGE_SIZE, offset);
-                    j++;
-
-                if (j == height - 1) {
-                    cout << "[";
-                    for (size_t p = 0; p < b; p++) {
-                        cout << ((pair<db_key_t, db_val_t> *) buf)[p].first << ":" << ((pair<db_key_t, db_val_t> *) buf)[p].second;
-                        if (j < sizes[i] - 1) {
-                            cout << ", ";
-                        }
-                    }
-                    cout << "]" << endl;                    
-                } else {
-                    cout << "[";
-                    for (size_t p = 0; p < b; p++) {
-                        cout << ((db_key_t *) buf)[p];
-                        if (j < sizes[i] - 1) {
-                            cout << ", ";
-                        }
-                    }
-                    cout << "]" << endl;
+                    offset += PAGE_SIZE;
+                    j = 0;
                 }
+            }
 
-                }
+            size_t height = sizes.size();
 
-                int k = 0;
-                while (k < b && ((pair<db_key_t, db_val_t> *) buf)[k].first != key) {
+            if (alg == binary_search) {
+                int position = binary_search_exact(fd, key);
+                if (position == -1)
+                    continue; // If we can't find min_key in the file
+
+                // Jump to the position in the file with the key
+                off_t offset = position * DB_PAIR_SIZE;
+                pair<db_key_t, db_val_t> kv_pair;
+                pread(fd, &kv_pair, DB_PAIR_SIZE, offset);
+
+                return kv_pair.second;
+            } else {
+                off_t start = offset;
+                size_t low = 0;
+
+                aligned_pread(fd, buf, PAGE_SIZE, offset);
+
+                size_t k = 0;
+                while (k < height - 1) {
+                    // TODO: change to in-memory binary search
+                    size_t r = low;
+                    size_t high = min(low + b, sizes[k] - (offset - start) / DB_KEY_SIZE);
+                    while (r < high && ((db_key_t *) buf)[r] < key) {
+                        r++;
+                    }
+
+                    off_t next = start + nceil(sizes[k] * DB_KEY_SIZE, PAGE_SIZE);
+                    off_t intermediate = next + (((offset - start) / DB_KEY_SIZE + low) / b * (b + 1) + r - low) * b * (k < height - 2 ? DB_KEY_SIZE : DB_PAIR_SIZE);
+                    offset = nfloor(intermediate, PAGE_SIZE);
+                    low = (intermediate % offset) / DB_KEY_SIZE;
+                    start = next;
+
+                    aligned_pread(fd, buf, PAGE_SIZE, offset);
                     k++;
                 }
 
-                if (k == b) {
+                int g = 0;
+                while (g < b && ((pair<db_key_t, db_val_t> *) buf)[g].first != key) {
+                    g++;
+                }
+                if (g == b) {
                     continue;
                 };
 
-                db_key_t val = ((pair<db_key_t, db_val_t> *) buf)[k].second;
+                db_key_t val = ((pair<db_key_t, db_val_t> *) buf)[g].second;
                 return val;
             }
-            
-            throw invalid_argument("Key not found");
-        } else {
-            throw invalid_argument("Search algorithm does not exist");
         }
+
+        throw invalid_argument("Key not found");
     }
 }
 
@@ -209,7 +176,6 @@ vector<pair<db_key_t, db_val_t> > KeyValueStore::scan(db_key_t min_key, db_key_t
 {
     vector<pair<db_key_t, db_val_t> > memtable_results = this->memtable.scan(min_key, max_key);
     vector<pair<db_key_t, db_val_t> > sst_results;
-    int pairSize = (sizeof(db_key_t) + sizeof(db_val_t));
 
     // Loop through the SSTs from latest to oldest
     for (int i = this->num_sst - 1; i > 0; i--)
@@ -223,16 +189,16 @@ vector<pair<db_key_t, db_val_t> > KeyValueStore::scan(db_key_t min_key, db_key_t
         if (position == -1) continue; // If we can't find min_key in the file
 
         // Jump to the position in the file with the min_key
-        off_t offset = position * pairSize;
+        off_t offset = position * DB_PAIR_SIZE;
 
         // Continuously scan until we reach max_key or end of file
         while (true)
         {
             pair<db_key_t, db_val_t> kv_pair;
-            ssize_t bytes_read = pread(file, &kv_pair, pairSize, offset);
+            ssize_t bytes_read = pread(file, &kv_pair, DB_PAIR_SIZE, offset);
             if (kv_pair.first > max_key || bytes_read == 0) break;
             sst_results.push_back(kv_pair);
-            offset += pairSize;
+            offset += DB_PAIR_SIZE;
         }
         close(file);
     }
@@ -257,15 +223,15 @@ void KeyValueStore::write_to_file(const char *filename,
     size_t height = sizes.size() - 1;
 
     aligned_pwrite(fd, sizes.data(), (height + 1) * sizeof(size_t), offset);
-    offset += ceil((double) (height + 1) * sizeof(size_t) / PAGE_SIZE) * PAGE_SIZE;
+    offset += nceil((height + 1) * sizeof(size_t), PAGE_SIZE);
 
     // write levels 0 - (height - 2)
     for (size_t i = 0; i < height - 1; i++) {
         aligned_pwrite(fd,
                        non_terminal_nodes[i].data(),
-                       sizes[i] * sizeof(db_key_t),
+                       sizes[i] * DB_KEY_SIZE,
                        offset);
-        offset += ceil((double) sizes[i] * sizeof(db_key_t) / PAGE_SIZE) * PAGE_SIZE;
+        offset += nceil(sizes[i] * DB_KEY_SIZE, PAGE_SIZE);
     }
 
     // write level height - 1
@@ -273,7 +239,7 @@ void KeyValueStore::write_to_file(const char *filename,
                    terminal_nodes.data(),
                    sizes[height - 1] * sizeof(pair<db_key_t, db_val_t>),
                    offset);
-    offset += ceil((double) sizes[height - 1] * sizeof(pair<db_key_t, db_val_t>) / PAGE_SIZE) * PAGE_SIZE;
+    offset += nceil(sizes[height - 1] * sizeof(pair<db_key_t, db_val_t>), PAGE_SIZE);
 
     close(fd);
 }
@@ -312,9 +278,9 @@ void KeyValueStore::read_from_file(const char *filename)
         non_terminal_nodes[i].resize(sizes[i]);
         aligned_pread(fd,
                       non_terminal_nodes[i].data(),
-                      sizes[i] * sizeof(db_key_t),
+                      sizes[i] * DB_KEY_SIZE,
                       offset);
-        offset += ceil((double) sizes[i] * sizeof(db_key_t) / PAGE_SIZE) * PAGE_SIZE;
+        offset += nceil(sizes[i] * DB_KEY_SIZE, PAGE_SIZE);
     }
 
     // read level height - 1
@@ -323,7 +289,7 @@ void KeyValueStore::read_from_file(const char *filename)
                   terminal_nodes.data(),
                   sizes[height - 1] * sizeof(pair<db_key_t, db_val_t>),
                   offset);
-    offset += ceil((double) sizes[height - 1] * sizeof(pair<db_key_t, db_val_t>) / PAGE_SIZE) * PAGE_SIZE;
+    offset += nceil(sizes[height - 1] * sizeof(pair<db_key_t, db_val_t>), PAGE_SIZE);
     
     close(fd);
 
@@ -336,13 +302,13 @@ void KeyValueStore::read_from_file(const char *filename)
         for (size_t i = 0; i < height - 1; i++) {
             cout << "[";
             for (size_t j = 0; j < sizes[i]; j++) {
+                if (j == 16) {
+                    cout << "...";
+                    break;
+                }
                 cout << non_terminal_nodes[i][j];
                 if (j < sizes[i] - 1) {
                     cout << ", ";
-                }
-                if (j == 10) {
-                    cout << "...";
-                    break;
                 }
             }
             cout << "]" << endl;
@@ -351,13 +317,13 @@ void KeyValueStore::read_from_file(const char *filename)
 
     cout << "[";
     for (size_t i = 0; i < sizes[height - 1]; i++) {
+        if (i == 16) {
+            cout << "...";
+            break;
+        }
         cout << terminal_nodes[i].first << ":" << terminal_nodes[i].second;
         if (i < sizes[height - 1] - 1) {
             cout << ", ";
-        }
-        if (i == 10) {
-            cout << "...";
-            break;
         }
     }
     cout << "]" << endl;
@@ -368,10 +334,9 @@ void KeyValueStore::serialize()
     vector<pair<db_key_t, db_val_t> > pairs = this->memtable.scan(DB_KEY_MIN, DB_KEY_MAX);
     this->memtable = Memtable(this->memtable_size);
 
-    size_t n = pairs.size();
-    size_t b = PAGE_SIZE / sizeof(pair<db_key_t, db_val_t>);
+    size_t b = PAGE_SIZE / DB_PAIR_SIZE; // number of key-value pairs per page
 
-    size_t height = ceil(log((double) n / b) / log(b + 1)) + 1;
+    size_t height = ceil(log((double) pairs.size() / b) / log(b + 1)) + 1;
 
     // populate levels 0 - (height - 2)
     vector<vector<db_key_t> > non_terminal_nodes;
@@ -380,7 +345,7 @@ void KeyValueStore::serialize()
     }
 
     size_t i = b - 1;
-    while (i < n) {
+    while (i < pairs.size()) {
         for (size_t j = height; j > 0; j--) {
             if ((i + 1) % ((size_t) pow(b + 1, j - 1) * b) == 0) {
                 if (j < height) {
@@ -413,8 +378,7 @@ int KeyValueStore::binary_search_smallest(int file, db_key_t target)
     // This function finds the position of the smallest key that is greater than target
 
     // Compute the number of key-value pairs in the file
-    int pairSize = (sizeof(db_key_t) + sizeof(db_val_t));
-    int numPairs = lseek(file, 0, SEEK_END) / pairSize;
+    int numPairs = lseek(file, 0, SEEK_END) / DB_PAIR_SIZE;
 
     // Binary search loop
     int low = 0, high = numPairs - 1, result = numPairs;
@@ -422,7 +386,7 @@ int KeyValueStore::binary_search_smallest(int file, db_key_t target)
     {
         int mid = (low + high) / 2;
         pair<db_key_t, db_val_t> pair;
-        pread(file, &pair, pairSize, mid * pairSize);
+        pread(file, &pair, DB_PAIR_SIZE, mid * DB_PAIR_SIZE);
 
         if (pair.first >= target)
         {
@@ -442,8 +406,7 @@ int KeyValueStore::binary_search_exact(int file, db_key_t target)
     // This function finds the position of the key that is equal to target
 
     // Compute the number of key-value pairs in the file
-    int pairSize = (sizeof(db_key_t) + sizeof(db_val_t));
-    int numPairs = lseek(file, 0, SEEK_END) / pairSize;
+    int numPairs = lseek(file, 0, SEEK_END) / DB_PAIR_SIZE;
 
     // Binary search loop
     int low = 0, high = numPairs - 1;
@@ -452,7 +415,7 @@ int KeyValueStore::binary_search_exact(int file, db_key_t target)
         int mid = (low + high) / 2;
         
         pair<db_key_t, db_val_t> pair;
-        pread(file, &pair, pairSize, mid * pairSize);
+        pread(file, &pair, DB_PAIR_SIZE, mid * DB_PAIR_SIZE);
 
         if (pair.first == target)
         {
