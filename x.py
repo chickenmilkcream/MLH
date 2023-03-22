@@ -155,19 +155,24 @@ print(find(pages, 5))
 def next(arr, target):
     start = 0;
     end = len(arr) - 1;
- 
-    ans = -1;
+    
+    print(start, end)
+
+    k = end + 1;
     while (start <= end):
         mid = (start + end) // 2;
+        print('mid', mid)
         if (arr[mid] < target):
+            print('block 1')
             start = mid + 1;
         else:
-            ans = mid;
+            print('block 2')
+            k = mid;
             end = mid - 1;
  
-    return ans;
+    return k;
  
 # Driver code
 if __name__ == '__main__':
-    arr = [1, 2, 3, 5, 8, 12];
-    print(next(arr, 4));
+    arr = [1];
+    print(next(arr, 2));

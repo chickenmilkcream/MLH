@@ -33,6 +33,7 @@ private:
                      vector<size_t> sizes,
                      vector<vector<db_key_t> > non_terminal_nodes,
                      vector<pair<db_key_t, db_val_t> > terminal_nodes);
+  off_t sizes(int fd, vector<size_t> &sizes);
   int binary_search_smallest(int file, db_key_t key);
   int binary_search_exact(int file, db_key_t key);
 };

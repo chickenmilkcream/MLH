@@ -8,8 +8,9 @@
 using namespace std;
 
 int main(int argc, char *argv[]) {
-    int n = 256 * (256 + 1) + 1;
-    // int n = 256 + 1;
+    // int n = 256 + 1; // height 2
+    int n = 256 * (256 + 1) + 1; // height 3
+    // int n = 256 * (256 * (256 + 1) + 1) + 1; // height 4
     KeyValueStore db = KeyValueStore(n * 16); // this writes an SST 
     // KeyValueStore db = KeyValueStore(n * 16 + 1); // this does NOT write an SST
 
@@ -21,6 +22,5 @@ int main(int argc, char *argv[]) {
     }
 
     // db.read_from_file("sst_1.bin"); 
-    cout << db.get(256 * (256 + 1)) << endl;
-    // 65536 is where it fails for n = 256 * (256 + 1) + 1 = 
+    cout << db.get(n - 1) << endl;
 }
