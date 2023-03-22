@@ -108,39 +108,43 @@ db_val_t KeyValueStore::get(db_key_t key, search_alg alg)
                 char buf[PAGE_SIZE];
 
                 off_t start = offset;
-                size_t low = 0;
+                size_t remainder = 0;
 
                 aligned_pread(fd, buf, PAGE_SIZE, offset);
 
                 size_t k = 0;
                 while (k < height - 1) {
                     // TODO: change to in-memory binary search
-                    size_t r = low;
-                    size_t high = min(low + b, sizes[k] - (offset - start) / DB_KEY_SIZE);
+                    size_t r = remainder;
+                    size_t high = min(remainder + b, sizes[k] - (offset - start) / DB_KEY_SIZE);
                     while (r < high && ((db_key_t *) buf)[r] < key) {
                         r++;
                     }
 
                     off_t next = start + nceil(sizes[k] * DB_KEY_SIZE, PAGE_SIZE);
-                    off_t intermediate = next + (((offset - start) / DB_KEY_SIZE + low) / b * (b + 1) + r - low) * b * (k < height - 2 ? DB_KEY_SIZE : DB_PAIR_SIZE);
+                    off_t intermediate = next + (((offset - start) / DB_KEY_SIZE + remainder) / b * (b + 1) + r - remainder) * b * (k < height - 2 ? DB_KEY_SIZE : DB_PAIR_SIZE);
                     offset = nfloor(intermediate, PAGE_SIZE);
-                    low = (intermediate % offset) / DB_KEY_SIZE;
+                    remainder = (intermediate % offset) / DB_KEY_SIZE;
                     start = next;
 
                     aligned_pread(fd, buf, PAGE_SIZE, offset);
                     k++;
                 }
 
-                int g = 0;
-                while (g < b && ((pair<db_key_t, db_val_t> *) buf)[g].first != key) {
-                    g++;
-                }
-                if (g == b) {
-                    continue;
-                };
+                ssize_t low = 0;
+                ssize_t high = min(b, sizes[height - 1] - (offset - start) / DB_PAIR_SIZE) - 1;
 
-                db_key_t val = ((pair<db_key_t, db_val_t> *) buf)[g].second;
-                return val;
+                while (low <= high) {
+                    ssize_t mid = (low + high) / 2;
+                    if (((pair<db_key_t, db_val_t> *) buf)[mid].first < key) {
+                        low = mid + 1;
+                    } else if (((pair<db_key_t, db_val_t> *) buf)[mid].first > key) {
+                        high = mid - 1;
+                    } else {                        
+                        db_key_t val = ((pair<db_key_t, db_val_t> *) buf)[mid].second;
+                        return val;
+                    }
+                }
             }
         }
 
