@@ -108,24 +108,30 @@ db_val_t KeyValueStore::get(db_key_t key, search_alg alg)
                 char buf[PAGE_SIZE];
 
                 off_t start = offset;
-                size_t remainder = 0;
+                off_t remainder = 0;
 
                 aligned_pread(fd, buf, PAGE_SIZE, offset);
 
                 size_t k = 0;
                 while (k < height - 1) {
-                    // TODO: change to in-memory binary search
-                    size_t r = remainder;
-                    size_t high = min(remainder + b, sizes[k] - (offset - start) / DB_KEY_SIZE);
-                    while (r < high && ((db_key_t *) buf)[r] < key) {
-                        r++;
+                    ssize_t low = remainder / DB_KEY_SIZE;
+                    ssize_t high = min(low + b, sizes[k] - (offset - start) / DB_KEY_SIZE) - 1;
+
+                    size_t r = high + 1;
+                    while (low <= high) {
+                        ssize_t mid = (low + high) / 2;
+                        if (((db_key_t *) buf)[mid] < key) {
+                            low = mid + 1;
+                        } else {
+                            r = mid;
+                            high = mid - 1;
+                        }
                     }
 
-                    off_t next = start + nceil(sizes[k] * DB_KEY_SIZE, PAGE_SIZE);
-                    off_t intermediate = next + (((offset - start) / DB_KEY_SIZE + remainder) / b * (b + 1) + r - remainder) * b * (k < height - 2 ? DB_KEY_SIZE : DB_PAIR_SIZE);
-                    offset = nfloor(intermediate, PAGE_SIZE);
-                    remainder = (intermediate % offset) / DB_KEY_SIZE;
-                    start = next;
+                    offset = start + nceil(sizes[k] * DB_KEY_SIZE, PAGE_SIZE) + (((offset + remainder - start) / DB_KEY_SIZE) / b * (b + 1) + r - remainder / DB_KEY_SIZE) * b * (k < height - 2 ? DB_KEY_SIZE : DB_PAIR_SIZE);
+                    remainder = offset % PAGE_SIZE;
+                    offset = nfloor(offset, PAGE_SIZE);
+                    start += nceil(sizes[k] * DB_KEY_SIZE, PAGE_SIZE);
 
                     aligned_pread(fd, buf, PAGE_SIZE, offset);
                     k++;
