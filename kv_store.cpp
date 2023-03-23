@@ -62,6 +62,8 @@ void KeyValueStore::close_db()
 
 // helper function for KeyValueStore::get
 db_val_t KeyValueStore::binary_search(int fd, db_key_t key) {
+    size_t b = PAGE_SIZE / DB_PAIR_SIZE; // number of key-value pairs per page
+
     vector<size_t> sizes;
     off_t offset = this->sizes(fd, sizes);
     size_t height = sizes.size();
@@ -72,26 +74,42 @@ db_val_t KeyValueStore::binary_search(int fd, db_key_t key) {
         offset += nceil(sizes[i] * DB_KEY_SIZE, PAGE_SIZE);
     }
 
-    // Binary search loop
-    off_t low = offset;
-    off_t high = offset + sizes[height - 1] * DB_PAIR_SIZE;
+    off_t start = offset; // offset of level (height - 1)
+
+    // binary search across terminal nodes
+    off_t low = start / PAGE_SIZE;
+    off_t high = (start + nceil(sizes[height - 1] * DB_PAIR_SIZE, PAGE_SIZE)) / PAGE_SIZE - 1;
     while (low <= high) {
-        off_t mid = nfloor((low + high) / 2, DB_PAIR_SIZE);
+        off_t mid = (low + high) / 2;
     
-        offset = nfloor(mid, PAGE_SIZE);
+        offset = mid * PAGE_SIZE;
         aligned_pread(fd, buf, PAGE_SIZE, offset);
 
-        size_t i = (mid - offset) / DB_PAIR_SIZE;
-        if (((pair<db_key_t, db_val_t> *) buf)[i].first < key) {
+        if (((pair<db_key_t, db_val_t> *) buf)[min(b, sizes[height - 1] - (offset - start) / DB_PAIR_SIZE) - 1].first < key) {
             low = mid + 1;
-        } else if (((pair<db_key_t, db_val_t> *) buf)[i].first > key) {
+        } else if (((pair<db_key_t, db_val_t> *) buf)[0].first > key) {
             high = mid - 1;
         } else {
-            db_key_t val = ((pair<db_key_t, db_val_t> *) buf)[i].second;
+            break;
+        }
+    }
+
+    // binary search within terminal node
+    ssize_t _low = 0;
+    ssize_t _high = min(b, sizes[height - 1] - (offset - start) / DB_PAIR_SIZE) - 1;
+
+    while (_low <= _high) {
+        ssize_t mid = (_low + _high) / 2;
+        if (((pair<db_key_t, db_val_t> *) buf)[mid].first < key) {
+            _low = mid + 1;
+        } else if (((pair<db_key_t, db_val_t> *) buf)[mid].first > key) {
+            _high = mid - 1;
+        } else {
+            db_key_t val = ((pair<db_key_t, db_val_t> *) buf)[mid].second;
             return val;
         }
     }
-    
+
     throw invalid_argument("Key not found");
 }
 
@@ -112,7 +130,7 @@ db_val_t KeyValueStore::b_tree_search(int fd, db_key_t key) {
 
     size_t i = 0;
     while (i < height - 1) {
-        // binary search
+        // binary search within non-terminal node
         ssize_t low = offset_buf / DB_KEY_SIZE;
         ssize_t high = min(low + b, sizes[i] - (offset - start) / DB_KEY_SIZE) - 1;
 
@@ -140,16 +158,16 @@ db_val_t KeyValueStore::b_tree_search(int fd, db_key_t key) {
         i++;
     }
 
-    // binary search
-    ssize_t low = 0;
-    ssize_t high = min(b, sizes[height - 1] - (offset - start) / DB_PAIR_SIZE) - 1;
+    // binary search within terminal node
+    ssize_t _low = 0;
+    ssize_t _high = min(b, sizes[height - 1] - (offset - start) / DB_PAIR_SIZE) - 1;
 
-    while (low <= high) {
-        ssize_t mid = (low + high) / 2;
+    while (_low <= _high) {
+        ssize_t mid = (_low + _high) / 2;
         if (((pair<db_key_t, db_val_t> *) buf)[mid].first < key) {
-            low = mid + 1;
+            _low = mid + 1;
         } else if (((pair<db_key_t, db_val_t> *) buf)[mid].first > key) {
-            high = mid - 1;
+            _high = mid - 1;
         } else {
             db_key_t val = ((pair<db_key_t, db_val_t> *) buf)[mid].second;
             return val;
