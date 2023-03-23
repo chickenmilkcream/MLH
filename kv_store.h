@@ -41,13 +41,13 @@ private:
                      vector<size_t> sizes,
                      size_t height,
                      off_t &start,
-                     off_t &offset);
+                     off_t &fp);
   void b_tree_search(int fd,
                      db_key_t key,
                      vector<size_t> sizes,
                      size_t height,
                      off_t &start,
-                     off_t &offset);
+                     off_t &fp);
 };
 
 #endif

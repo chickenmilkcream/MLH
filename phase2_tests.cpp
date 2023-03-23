@@ -8,8 +8,8 @@
 using namespace std;
 
 int main(int argc, char *argv[]) {
-    int n = 256 + 1; // height 2
-    // int n = 256 * (256 + 1) + 1; // height 3
+    // int n = 256 + 1; // height 2
+    int n = 256 * (256 + 1) + 1; // height 3
     // int n = 256 * (256 * (256 + 1) + 1) + 1; // height 4
     KeyValueStore db = KeyValueStore(n * 16); // this writes an SST 
     // KeyValueStore db = KeyValueStore(n * 16 + 1); // this does NOT write an SST
@@ -22,11 +22,11 @@ int main(int argc, char *argv[]) {
     }
 
     // db.read_from_file("sst_1.bin"); 
-    // cout << db.get(1, search_alg::b_tree_search) << endl;
-    // cout << db.get(0, search_alg::binary_search) << endl;
+    // cout << db.get(255 * 7 + 1, search_alg::b_tree_search) << endl;
+    // cout << db.get(255 * 7 + 1, search_alg::binary_search) << endl;
 
-    vector<pair<db_key_t, db_val_t> > pairs = db.scan(255, 255, search_alg::b_tree_search);
-    // vector<pair<db_key_t, db_val_t> > pairs = db.scan(255, 255, search_alg::binary_search);
+    // vector<pair<db_key_t, db_val_t> > pairs = db.scan(255 * 255, 255 * 255 + 1, search_alg::b_tree_search);
+    vector<pair<db_key_t, db_val_t> > pairs = db.scan(255 + 1, 255 + 1, search_alg::binary_search);
 
     for (int i = 0; i < pairs.size(); i++) {
         cout << pairs[i].first << ":" << pairs[i].second << ", ";
