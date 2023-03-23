@@ -63,6 +63,9 @@ private:
     void update_directory_keys();
 
     PageFrame *clock_find_victim();
+
+    void move_clock_hand();
+
 };
 
 #endif

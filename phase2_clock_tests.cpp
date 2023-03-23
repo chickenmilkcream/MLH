@@ -18,7 +18,7 @@ int main(int argc, char *argv[]) {
     int num_pairs_in_page = 1; // ideally, I would like to have more pairs, but I don't know how to do that with vector<pair<db_key_t, db_val_t>* >, the memory thing when I try to access page_content[i] gets weird...
 
     vector<pair<db_key_t, db_val_t> > page_content;
-    for (auto i = 0; i != 20; ++i) {
+    for (auto i = 1; i != 21; ++i) {
         page_content.push_back(make_pair(i, i));
     }
 
@@ -33,7 +33,7 @@ int main(int argc, char *argv[]) {
     assert(bpd.directory.size() == initial_num_bits ^ 2);
     assert(bpd.current_num_items == 0);
 
-    bpd.print_directory();
+    // bpd.print_directory();
 
     std::cout << "* Function generate_binary_strings passed \n";
     std::cout << "* Create directory passed \n";
@@ -63,7 +63,7 @@ int main(int argc, char *argv[]) {
 
     page_number++;
     bpd.insert_page(&page_content[9], num_pairs_in_page, sst_name, page_number);
-    bpd.print_directory();
+    // bpd.print_directory();
 
     assert(bpd.current_num_bits == initial_num_bits + 1);
     assert(bpd.maximum_num_items_threshold == maximum_num_items_threshold * 2);
@@ -92,9 +92,14 @@ int main(int argc, char *argv[]) {
 
     // insert 3 more pages to test eviction
     // now page 1 should get evicted but not 2-4
-    // bpd.print_directory();
+    std::cout << "inserting 3 more pages to test eviction \n";
+    bpd.print_directory();
     bpd.insert_page(&page_content[16], num_pairs_in_page, sst_name, page_number);
-    bpd.insert_page(&page_content[17], num_pairs_in_page, sst_name, page_number);
+
+    std::cout << "after first eviction \n";
+    bpd.print_directory();
+    //page_number++;
+    //bpd.insert_page(&page_content[17], num_pairs_in_page, sst_name, page_number);
 
     // for (auto i = 16; i != 19; i++) {
     //     page_number++;

@@ -39,6 +39,7 @@ BPDirectory::BPDirectory(string eviction_policy, int initial_num_bits, int maxim
     this->clock_hand_location = this->directory[this->directory_keys[0]]->head;
 }
 
+
 PageFrame *BPDirectory::clock_find_victim() {
     // find the victim using clock eviction policy and return the victim
     // We will start at the clock hand and go around the clock until we find a victim
@@ -48,34 +49,43 @@ PageFrame *BPDirectory::clock_find_victim() {
     // We will also update the clock hand key and clock hand index to point to the next item in the clock bitmap
 
     while (true) {
-//        cout << "clock hand location " << this->clock_hand_location << endl;
-        if (this->clock_hand_key >= this->directory_keys.size()) {
-            cout << "oof clock hand key" << this->clock_hand_key << "location" << this->clock_hand_location->page_number << endl;
-            this->clock_hand_key = 0;
-            this->clock_hand_location = this->directory[this->directory_keys[0]]->head;
-            continue;
-        }
-        if (this->clock_hand_location == nullptr) {
-            cout << "rip clock hand key" << this->directory_keys[this->clock_hand_key] << endl;
-            this->clock_hand_key++;
-            if (this->clock_hand_key >= this->directory_keys.size()) {
-                this->clock_hand_key = 0;
-            }
-            cout <<this->directory_keys[this->clock_hand_key] << endl;
-            this->clock_hand_location = this->directory[this->directory_keys[this->clock_hand_key]]->head;
-            continue;
-        }
+        this->move_clock_hand();
+        // cout << "clock hand location " << this->clock_hand_location << endl;
+
         PageFrame* potential_victim = this->clock_hand_location;
+        if (potential_victim == nullptr) {
+            continue;
+        }
+        // cout << "Potential victim page number " << potential_victim->page_number << endl;
+        cout << "clock hand located at page" << potential_victim->page_number << " key " << this->directory_keys[clock_hand_key] << " oof " << clock_hand_key << endl;
         if (potential_victim->get_reference_bit() == 0) {
             cout << "Found victim page number " << potential_victim->page_number << endl;
             return potential_victim;
         }
         else {
             potential_victim->set_reference_bit(0);
-            this->clock_hand_location = potential_victim->next;
         }
     }
 }
+
+void BPDirectory::move_clock_hand() {
+    // update the reference bit of the victim to 1
+    // update the clock hand to point to the next item in the clock bitmap
+    // std::cout << "Moving clock hand" << std::endl;
+    if (this->clock_hand_location == nullptr) {
+        this->clock_hand_key++;
+        if (this->clock_hand_key >= this->directory_keys.size()) {
+            this->clock_hand_key = 0;
+        }
+        this->clock_hand_location = this->directory[this->directory_keys[this->clock_hand_key]]->head;
+    }
+    else {
+        this->clock_hand_location = this->clock_hand_location->next;
+
+    }
+    // std::cout << "Clock hand key " << this->clock_hand_key << std::endl;
+}
+
 
 void BPDirectory::update_directory_keys()
 {
@@ -84,8 +94,11 @@ void BPDirectory::update_directory_keys()
     for (auto it = this->directory.begin(); it != this->directory.end(); ++it)
     {
         this->directory_keys.push_back(it->first);
-        cout << it->first << endl;
+        // cout << it->first << endl;
+
     }
+    this->clock_hand_key = 0;
+    this->clock_hand_location = this->directory[this->directory_keys[0]]->head;
 }
 
 void BPDirectory::set_maximum_bp_size(int value)
