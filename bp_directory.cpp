@@ -37,6 +37,7 @@ BPDirectory::BPDirectory(string eviction_policy, int initial_num_bits, int maxim
     this->update_directory_keys();
     this->clock_hand_key = 0;
     this->clock_hand_location = this->directory[this->directory_keys[0]]->head;
+    this->clock_cycle_count = 0;
 }
 
 
@@ -56,14 +57,20 @@ PageFrame *BPDirectory::clock_find_victim() {
         if (potential_victim == nullptr) {
             continue;
         }
-        // cout << "Potential victim page number " << potential_victim->page_number << endl;
-        cout << "clock hand located at page" << potential_victim->page_number << " key " << this->directory_keys[clock_hand_key] << " oof " << clock_hand_key << endl;
-        if (potential_victim->get_reference_bit() == 0) {
-            cout << "Found victim page number " << potential_victim->page_number << endl;
-            return potential_victim;
-        }
-        else {
-            potential_victim->set_reference_bit(0);
+
+        cout<< "clock cycle count " << this->clock_cycle_count << " " << this->directory[this->directory_keys[this->clock_hand_key]]->clock_cycle_count << endl;
+        if (this->directory[this->directory_keys[this->clock_hand_key]]->clock_cycle_count < this->clock_cycle_count) {
+            // cout << "Potential victim page number " << potential_victim->page_number << endl;
+            cout << "clock hand located at page" << potential_victim->page_number << " key "
+                 << this->directory_keys[clock_hand_key] << " oof " << clock_hand_key << endl;
+            if (potential_victim->get_reference_bit() == 0) {
+                cout << "Found victim page number " << potential_victim->page_number << endl;
+                return potential_victim;
+            } else {
+                potential_victim->set_reference_bit(0);
+            }
+            this->directory[this->directory_keys[this->clock_hand_key]]->clock_cycle_count = this->clock_cycle_count;
+
         }
     }
 }
@@ -76,6 +83,7 @@ void BPDirectory::move_clock_hand() {
         this->clock_hand_key++;
         if (this->clock_hand_key >= this->directory_keys.size()) {
             this->clock_hand_key = 0;
+            this->clock_cycle_count++;
         }
         this->clock_hand_location = this->directory[this->directory_keys[this->clock_hand_key]]->head;
     }

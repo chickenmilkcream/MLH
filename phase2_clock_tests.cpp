@@ -93,13 +93,13 @@ int main(int argc, char *argv[]) {
     // insert 3 more pages to test eviction
     // now page 1 should get evicted but not 2-4
     std::cout << "inserting 3 more pages to test eviction \n";
-    bpd.print_directory();
+//    bpd.print_directory();
     bpd.insert_page(&page_content[16], num_pairs_in_page, sst_name, page_number);
 
     std::cout << "after first eviction \n";
-    bpd.print_directory();
-    //page_number++;
-    //bpd.insert_page(&page_content[17], num_pairs_in_page, sst_name, page_number);
+//    bpd.print_directory();
+    page_number++;
+    bpd.insert_page(&page_content[17], num_pairs_in_page, sst_name, page_number);
 
     // for (auto i = 16; i != 19; i++) {
     //     page_number++;

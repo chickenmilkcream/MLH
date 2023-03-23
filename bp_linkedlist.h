@@ -16,6 +16,7 @@ public:
     void remove_page_frame(PageFrame *page_frame);
     void print_list();
     void free_all_pages();
+    int clock_cycle_count;
 };
 
 #endif

@@ -65,7 +65,7 @@ private:
     PageFrame *clock_find_victim();
 
     void move_clock_hand();
-
+    int clock_cycle_count;
 };
 
 #endif
