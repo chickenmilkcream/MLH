@@ -22,5 +22,6 @@ int main(int argc, char *argv[]) {
     }
 
     // db.read_from_file("sst_1.bin"); 
-    cout << db.get(n - 1) << endl;
+    cout << db.get(n - 1, search_alg::b_tree_search) << endl;
+    cout << db.get(n - 1, search_alg::binary_search) << endl;
 }
