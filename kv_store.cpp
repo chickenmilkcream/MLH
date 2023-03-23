@@ -71,11 +71,10 @@ void KeyValueStore::binary_search(int fd, db_key_t key, vector<size_t> sizes, si
 
     char buf[PAGE_SIZE];
 
-    // binary search across terminal nodes
+    // binary search in storage
     ssize_t low = start / PAGE_SIZE;
     ssize_t high = (start + nceil(sizes[height - 1] * DB_PAIR_SIZE, PAGE_SIZE)) / PAGE_SIZE - 1;
 
-    size_t i = high + 1; // think about this init more...
     while (low <= high) {
         ssize_t mid = (low + high) / 2;
 
@@ -84,13 +83,12 @@ void KeyValueStore::binary_search(int fd, db_key_t key, vector<size_t> sizes, si
 
         if (((pair<db_key_t, db_val_t> *) buf)[min(b, sizes[height - 1] - (offset - start) / DB_PAIR_SIZE) - 1].first < key) {
             low = mid + 1;
-        } else {
-            i = mid;
+        } else if (((pair<db_key_t, db_val_t> *) buf)[0].first > key) {
             high = mid - 1;
+        } else {
+            break;
         }
     }
-
-    offset = i * PAGE_SIZE;
 }
 
 // helper function for KeyValueStore::get and KeyValueStore::scan
@@ -106,7 +104,7 @@ void KeyValueStore::b_tree_search(int fd, db_key_t key, vector<size_t> sizes, si
 
     size_t i = 0;
     while (i < height - 1) {
-        // binary search within non-terminal node
+        // binary search in memory
         ssize_t low = offset_buf / DB_KEY_SIZE;
         ssize_t high = min(low + b, sizes[i] - (offset - start) / DB_KEY_SIZE) - 1;
 
@@ -169,7 +167,7 @@ db_val_t KeyValueStore::get(db_key_t key, search_alg alg)
             aligned_pread(fd, buf, PAGE_SIZE, offset);
             close(fd);
 
-            // binary search within terminal node
+            // binary search in memory
             ssize_t low = 0;
             ssize_t high = min(b, sizes[height - 1] - (offset - start) / DB_PAIR_SIZE) - 1;
 
@@ -229,12 +227,13 @@ vector<pair<db_key_t, db_val_t> > KeyValueStore::scan(db_key_t min_key, db_key_t
 
         char buf[PAGE_SIZE];
         aligned_pread(fd, buf, PAGE_SIZE, offset);
+        offset += PAGE_SIZE;
 
-        // binary search within terminal node
+        // binary search in memory (for key greater than or equal to min_key)
         ssize_t low = 0;
-        ssize_t high = min(b, sizes[height - 1] - (offset - start) / DB_PAIR_SIZE) - 1;
-
-        size_t j = 0; // TODO: think about this init more..., offset vs fd?, simplify intermediate calcs..
+        ssize_t high = min(b, sizes[height - 1] - (offset - PAGE_SIZE - start) / DB_PAIR_SIZE) - 1;
+        
+        size_t j = high + 1;
         while (low <= high) {
             ssize_t mid = (low + high) / 2;
             if (((pair<db_key_t, db_val_t> *) buf)[mid].first < min_key) {
@@ -246,7 +245,8 @@ vector<pair<db_key_t, db_val_t> > KeyValueStore::scan(db_key_t min_key, db_key_t
         }
 
         size_t k = j;
-        while (((pair<db_key_t, db_val_t> *) buf)[k].first <= max_key && k < sizes[height - 1] - (offset - PAGE_SIZE - start) / DB_PAIR_SIZE) {
+        while (((pair<db_key_t, db_val_t> *) buf)[k].first <= max_key &&
+               k < sizes[height - 1] - (offset - PAGE_SIZE - start) / DB_PAIR_SIZE) {
             pairs.push_back(((pair<db_key_t, db_val_t> *) buf)[k]);
             k++;
             if (k == b) {
@@ -265,9 +265,9 @@ vector<pair<db_key_t, db_val_t> > KeyValueStore::scan(db_key_t min_key, db_key_t
 void KeyValueStore::print() { this->memtable.print(); }
 
 void KeyValueStore::sizes(int fd, off_t &fp, vector<size_t> &sizes, size_t &height) {
-    char buf[PAGE_SIZE];
     fp = 0;
 
+    char buf[PAGE_SIZE];
     aligned_pread(fd, buf, PAGE_SIZE, fp);
     fp += PAGE_SIZE;
 

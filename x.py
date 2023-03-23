@@ -156,7 +156,7 @@ def next(arr, target):
     start = 0;
     end = len(arr) - 1;
 
-    k = 0;
+    k = -1;
     while (start <= end):
         mid = (start + end) // 2;
         if (arr[mid] < target):
@@ -170,4 +170,4 @@ def next(arr, target):
 # Driver code
 if __name__ == '__main__':
     arr = [1, 4, 5];
-    print(next(arr, 0));
+    print(next(arr, 8));

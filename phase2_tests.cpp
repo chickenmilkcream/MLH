@@ -25,7 +25,8 @@ int main(int argc, char *argv[]) {
     // cout << db.get(1, search_alg::b_tree_search) << endl;
     // cout << db.get(0, search_alg::binary_search) << endl;
 
-    vector<pair<db_key_t, db_val_t> > pairs = db.scan(-126, 258, search_alg::b_tree_search);
+    vector<pair<db_key_t, db_val_t> > pairs = db.scan(255, 255, search_alg::b_tree_search);
+    // vector<pair<db_key_t, db_val_t> > pairs = db.scan(255, 255, search_alg::binary_search);
 
     for (int i = 0; i < pairs.size(); i++) {
         cout << pairs[i].first << ":" << pairs[i].second << ", ";
