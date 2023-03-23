@@ -18,10 +18,18 @@ int main(int argc, char *argv[]) {
     // 4096 / 8 = 512 keys (for non-terminal nodes)
 
     for (int i = 0; i < n; i++) {
-        db.put(2 * i, i);
+        db.put(i, i);
     }
 
     // db.read_from_file("sst_1.bin"); 
     // cout << db.get(1, search_alg::b_tree_search) << endl;
-    cout << db.get(0, search_alg::binary_search) << endl;
+    // cout << db.get(0, search_alg::binary_search) << endl;
+
+    vector<pair<db_key_t, db_val_t> > pairs = db.scan(-126, 258, search_alg::b_tree_search);
+
+    for (int i = 0; i < pairs.size(); i++) {
+        cout << pairs[i].first << ":" << pairs[i].second << ", ";
+    }
+    cout << endl;
+
 }

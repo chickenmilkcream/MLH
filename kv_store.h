@@ -48,7 +48,6 @@ private:
                      size_t height,
                      off_t &start,
                      off_t &offset);
-  int binary_search_smallest(int file, db_key_t key);
 };
 
 #endif

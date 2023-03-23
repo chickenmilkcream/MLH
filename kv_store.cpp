@@ -60,7 +60,7 @@ void KeyValueStore::close_db()
     // TODO: discuss with team what else to do here
 }
 
-// helper function for KeyValueStore::get
+// helper function for KeyValueStore::get and KeyValueStore::scan
 void KeyValueStore::binary_search(int fd, db_key_t key, vector<size_t> sizes, size_t height, off_t &start, off_t &offset) {
     size_t b = PAGE_SIZE / DB_PAIR_SIZE; // number of key-value pairs per page
 
@@ -75,7 +75,7 @@ void KeyValueStore::binary_search(int fd, db_key_t key, vector<size_t> sizes, si
     ssize_t low = start / PAGE_SIZE;
     ssize_t high = (start + nceil(sizes[height - 1] * DB_PAIR_SIZE, PAGE_SIZE)) / PAGE_SIZE - 1;
 
-    size_t i = high + 1;
+    size_t i = high + 1; // think about this init more...
     while (low <= high) {
         ssize_t mid = (low + high) / 2;
 
@@ -93,7 +93,7 @@ void KeyValueStore::binary_search(int fd, db_key_t key, vector<size_t> sizes, si
     offset = i * PAGE_SIZE;
 }
 
-// helper function for KeyValueStore::get
+// helper function for KeyValueStore::get and KeyValueStore::scan
 void KeyValueStore::b_tree_search(int fd, db_key_t key, vector<size_t> sizes, size_t height, off_t &start, off_t &offset) {
     size_t b = PAGE_SIZE / DB_PAIR_SIZE; // number of key-value pairs per page
 
@@ -203,38 +203,63 @@ void KeyValueStore::put(db_key_t key, db_val_t val)
 
 vector<pair<db_key_t, db_val_t> > KeyValueStore::scan(db_key_t min_key, db_key_t max_key, search_alg alg)
 {
-    vector<pair<db_key_t, db_val_t> > memtable_results = this->memtable.scan(min_key, max_key);
-    vector<pair<db_key_t, db_val_t> > sst_results;
+    size_t b = PAGE_SIZE / DB_PAIR_SIZE; // number of key-value pairs per page
 
+    vector<pair<db_key_t, db_val_t> > pairs = this->memtable.scan(min_key, max_key);
+    
     // Loop through the SSTs from latest to oldest
-    for (int i = this->num_sst - 1; i > 0; i--)
-    {
-        // Open the file
-        string s = "sst_" + to_string(i) + ".bin";
-        int file = open(s.c_str(), O_RDONLY);
-        if (file == -1) continue; // If we can't find open the file
+    for (size_t i = this->num_sst - 1; i > 0; i--) {
+        const char *filename = ("sst_" + to_string(i) + ".bin").c_str();
+        int fd = open(filename, O_RDONLY | O_DIRECT | O_SYNC);
+        off_t start = 0;
+        off_t offset = 0;
 
-        int position = binary_search_smallest(file, min_key);
-        if (position == -1) continue; // If we can't find min_key in the file
+        vector<size_t> sizes;
+        size_t height;
+        this->sizes(fd, offset, sizes, height);
 
-        // Jump to the position in the file with the min_key
-        off_t offset = position * DB_PAIR_SIZE;
-
-        // Continuously scan until we reach max_key or end of file
-        while (true)
-        {
-            pair<db_key_t, db_val_t> kv_pair;
-            ssize_t bytes_read = pread(file, &kv_pair, DB_PAIR_SIZE, offset);
-            if (kv_pair.first > max_key || bytes_read == 0) break;
-            sst_results.push_back(kv_pair);
-            offset += DB_PAIR_SIZE;
+        if (alg == search_alg::binary_search) {
+            this->binary_search(fd, min_key, sizes, height, start, offset);
+        } else if (alg == search_alg::b_tree_search) {
+            this->b_tree_search(fd, min_key, sizes, height, start, offset);
+        } else {
+            close(fd);
+            throw invalid_argument("Search algorithm not found");
         }
-        close(file);
+
+        char buf[PAGE_SIZE];
+        aligned_pread(fd, buf, PAGE_SIZE, offset);
+
+        // binary search within terminal node
+        ssize_t low = 0;
+        ssize_t high = min(b, sizes[height - 1] - (offset - start) / DB_PAIR_SIZE) - 1;
+
+        size_t j = 0; // TODO: think about this init more..., offset vs fd?, simplify intermediate calcs..
+        while (low <= high) {
+            ssize_t mid = (low + high) / 2;
+            if (((pair<db_key_t, db_val_t> *) buf)[mid].first < min_key) {
+                low = mid + 1;
+            } else {
+                j = mid;
+                high = mid - 1;                
+            }
+        }
+
+        size_t k = j;
+        while (((pair<db_key_t, db_val_t> *) buf)[k].first <= max_key && k < sizes[height - 1] - (offset - PAGE_SIZE - start) / DB_PAIR_SIZE) {
+            pairs.push_back(((pair<db_key_t, db_val_t> *) buf)[k]);
+            k++;
+            if (k == b) {
+                aligned_pread(fd, buf, PAGE_SIZE, offset);
+                offset += PAGE_SIZE;
+                k = 0;
+            }
+        }
+
+        close(fd);
     }
 
-    // Return the memtable and SST results
-    memtable_results.insert(memtable_results.end(), sst_results.begin(), sst_results.end());
-    return memtable_results;
+    return pairs;
 }
 
 void KeyValueStore::print() { this->memtable.print(); }
@@ -407,32 +432,4 @@ void KeyValueStore::serialize()
 
     const char *filename = ("sst_" + to_string(this->num_sst) + ".bin").c_str();
     this->write_to_file(filename, sizes, non_terminal_nodes, terminal_nodes);
-}
-
-int KeyValueStore::binary_search_smallest(int file, db_key_t target)
-{
-    // This function finds the position of the smallest key that is greater than target
-
-    // Compute the number of key-value pairs in the file
-    int numPairs = lseek(file, 0, SEEK_END) / DB_PAIR_SIZE;
-
-    // Binary search loop
-    int low = 0, high = numPairs - 1, result = numPairs;
-    while (low <= high)
-    {
-        int mid = (low + high) / 2;
-        pair<db_key_t, db_val_t> pair;
-        pread(file, &pair, DB_PAIR_SIZE, mid * DB_PAIR_SIZE);
-
-        if (pair.first >= target)
-        {
-            result = mid;
-            high = mid - 1;
-        }
-        else
-        {
-            low = mid + 1;
-        }
-    }
-    return result;
 }
