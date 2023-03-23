@@ -61,9 +61,7 @@ void KeyValueStore::close_db()
 }
 
 // helper function for KeyValueStore::get
-db_val_t KeyValueStore::binary_search(const char *filename, db_key_t key) {   
-    int fd = open(filename, O_RDONLY | O_DIRECT | O_SYNC);
-
+db_val_t KeyValueStore::binary_search(int fd, db_key_t key) {
     vector<size_t> sizes;
     off_t offset = this->sizes(fd, sizes);
     size_t height = sizes.size();
@@ -89,21 +87,17 @@ db_val_t KeyValueStore::binary_search(const char *filename, db_key_t key) {
         } else if (((pair<db_key_t, db_val_t> *) buf)[i].first > key) {
             high = mid - 1;
         } else {
-            close(fd);            
             db_key_t val = ((pair<db_key_t, db_val_t> *) buf)[i].second;
             return val;
         }
     }
     
-    close(fd);
     throw invalid_argument("Key not found");
 }
 
 // helper function for KeyValueStore::get
-db_val_t KeyValueStore::b_tree_search(const char *filename, db_key_t key) {
+db_val_t KeyValueStore::b_tree_search(int fd, db_key_t key) {
     size_t b = PAGE_SIZE / DB_PAIR_SIZE; // number of key-value pairs per page
-
-    int fd = open(filename, O_RDONLY | O_DIRECT | O_SYNC);
 
     vector<size_t> sizes;
     off_t offset = this->sizes(fd, sizes); // offset into file
@@ -157,13 +151,11 @@ db_val_t KeyValueStore::b_tree_search(const char *filename, db_key_t key) {
         } else if (((pair<db_key_t, db_val_t> *) buf)[mid].first > key) {
             high = mid - 1;
         } else {
-            close(fd);
             db_key_t val = ((pair<db_key_t, db_val_t> *) buf)[mid].second;
             return val;
         }
     }
 
-    close(fd);
     throw invalid_argument("Key not found");
 }
 
@@ -171,29 +163,35 @@ db_val_t KeyValueStore::get(db_key_t key, search_alg alg)
 {    
     try {
         // Try to look in the memtable for the key
-        return this->memtable.get(key);
+        db_key_t val = this->memtable.get(key);
+        return val;
     } catch (invalid_argument &e) {
         // Couldn't find it in the memtable
         // Loop through the SSTs from latest to oldest
         for (size_t i = this->num_sst - 1; i > 0; i--) {
             const char *filename = ("sst_" + to_string(i) + ".bin").c_str();
+            int fd = open(filename, O_RDONLY | O_DIRECT | O_SYNC);
+
+            db_key_t val;
             if (alg == search_alg::binary_search) {
                 try {
-                    db_key_t val = this->binary_search(filename, key);
-                    return val;
+                    val = this->binary_search(fd, key);
                 } catch (invalid_argument &e) {
                     continue;
                 }                
             } else if (alg == search_alg::b_tree_search) {
                 try {
-                    db_key_t val = this->b_tree_search(filename, key);
-                    return val;
+                    val = this->b_tree_search(fd, key);
                 } catch (invalid_argument &e) {
                     continue;
                 }
             } else {
+                close(fd);
                 throw invalid_argument("Search algorithm not found");
             }
+
+            close(fd);
+            return val;
         }
 
         throw invalid_argument("Key not found");
