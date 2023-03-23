@@ -89,11 +89,13 @@ db_val_t KeyValueStore::binary_search(const char *filename, db_key_t key) {
         } else if (((pair<db_key_t, db_val_t> *) buf)[i].first > key) {
             high = mid - 1;
         } else {
+            close(fd);            
             db_key_t val = ((pair<db_key_t, db_val_t> *) buf)[i].second;
             return val;
         }
     }
     
+    close(fd);
     throw invalid_argument("Key not found");
 }
 
@@ -154,12 +156,14 @@ db_val_t KeyValueStore::b_tree_search(const char *filename, db_key_t key) {
             low = mid + 1;
         } else if (((pair<db_key_t, db_val_t> *) buf)[mid].first > key) {
             high = mid - 1;
-        } else {                        
+        } else {
+            close(fd);
             db_key_t val = ((pair<db_key_t, db_val_t> *) buf)[mid].second;
             return val;
         }
     }
 
+    close(fd);
     throw invalid_argument("Key not found");
 }
 
@@ -175,13 +179,15 @@ db_val_t KeyValueStore::get(db_key_t key, search_alg alg)
             const char *filename = ("sst_" + to_string(i) + ".bin").c_str();
             if (alg == search_alg::binary_search) {
                 try {
-                    return this->binary_search(filename, key);
+                    db_key_t val = this->binary_search(filename, key);
+                    return val;
                 } catch (invalid_argument &e) {
                     continue;
                 }                
             } else if (alg == search_alg::b_tree_search) {
                 try {
-                    return this->b_tree_search(filename, key);
+                    db_key_t val = this->b_tree_search(filename, key);
+                    return val;
                 } catch (invalid_argument &e) {
                     continue;
                 }
@@ -205,7 +211,7 @@ void KeyValueStore::put(db_key_t key, db_val_t val)
     }
 }
 
-vector<pair<db_key_t, db_val_t> > KeyValueStore::scan(db_key_t min_key, db_key_t max_key)
+vector<pair<db_key_t, db_val_t> > KeyValueStore::scan(db_key_t min_key, db_key_t max_key, search_alg alg)
 {
     vector<pair<db_key_t, db_val_t> > memtable_results = this->memtable.scan(min_key, max_key);
     vector<pair<db_key_t, db_val_t> > sst_results;
