@@ -11,6 +11,7 @@ int main(int argc, char *argv[]) {
     // int n = 256 + 1; // height 2
     int n = 256 * (256 + 1) + 1; // height 3
     // int n = 256 * (256 * (256 + 1) + 1) + 1; // height 4
+
     KeyValueStore db = KeyValueStore(n * 16); // this writes an SST 
     // KeyValueStore db = KeyValueStore(n * 16 + 1); // this does NOT write an SST
 
@@ -21,12 +22,24 @@ int main(int argc, char *argv[]) {
         db.put(i, i);
     }
 
-    // db.read_from_file("sst_1.bin"); 
-    // cout << db.get(255 * 7 + 1, search_alg::b_tree_search) << endl;
-    // cout << db.get(255 * 7 + 1, search_alg::binary_search) << endl;
+    db.read_from_file("sst_1.bin"); 
 
-    // vector<pair<db_key_t, db_val_t> > pairs = db.scan(255 * 255, 255 * 255 + 1, search_alg::b_tree_search);
-    vector<pair<db_key_t, db_val_t> > pairs = db.scan(255 + 1, 255 + 1, search_alg::binary_search);
+    // for (int i = 0; i < n; i++) {
+    //     assert(db.get(i, search_alg::b_tree_search) == i);
+    //     if (i % 100 == 0) {
+    //         cout << i << endl;
+    //     }
+    // }
+
+    // for (int i = 0; i < n; i++) {
+    //     assert(db.get(i, search_alg::binary_search) == i);
+    //     if (i % 100 == 0) {
+    //         cout << i << endl;
+    //     }
+    // }
+
+    vector<pair<db_key_t, db_val_t> > pairs = db.scan(255 * 255 - 45, 255 * 255 + 1, search_alg::b_tree_search);
+    // vector<pair<db_key_t, db_val_t> > pairs = db.scan(255 + 1, 255 + 1, search_alg::binary_search);
 
     for (int i = 0; i < pairs.size(); i++) {
         cout << pairs[i].first << ":" << pairs[i].second << ", ";
