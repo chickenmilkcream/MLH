@@ -158,19 +158,16 @@ def next(arr, target):
     
     print(start, end)
 
-    k = end + 1;
+    mid = end + 1;
     while (start <= end):
         mid = (start + end) // 2;
-        print('mid', mid)
         if (arr[mid] < target):
-            print('block 1')
             start = mid + 1;
         else:
-            print('block 2')
-            k = mid;
+            # k = mid;
             end = mid - 1;
  
-    return k;
+    return mid;
  
 # Driver code
 if __name__ == '__main__':

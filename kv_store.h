@@ -35,9 +35,19 @@ private:
                      vector<size_t> sizes,
                      vector<vector<db_key_t> > non_terminal_nodes,
                      vector<pair<db_key_t, db_val_t> > terminal_nodes);
-  off_t sizes(int fd, vector<size_t> &sizes);
-  db_val_t binary_search(int fd, db_key_t key);
-  db_val_t b_tree_search(int fd, db_key_t key);
+  void sizes(int fd, off_t &fp, vector<size_t> &sizes, size_t &height);
+  void binary_search(int fd,
+                     db_key_t key,
+                     vector<size_t> sizes,
+                     size_t height,
+                     off_t &start,
+                     off_t &offset);
+  void b_tree_search(int fd,
+                     db_key_t key,
+                     vector<size_t> sizes,
+                     size_t height,
+                     off_t &start,
+                     off_t &offset);
   int binary_search_smallest(int file, db_key_t key);
 };
 
