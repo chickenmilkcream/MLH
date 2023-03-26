@@ -1,15 +1,104 @@
 #include <iostream>
+#include <algorithm>
 #include <cassert>
 #include "kv_store.h"
 #include "memtable.h"
 
 int main(int argc, char *argv[])
 {
-    int memtable_size = 144;
-    string eviction_policy = "clock";
-    int initial_num_bits = 2;
-    int maximum_bp_size = 4;
-    int maximum_num_items_threshold = 6;
+    /* ================= BINARY SEARCH GET, PUT, SCAN TESTS ================= */
+    cout << "========== BINARY SEARCH GET, PUT, SCAN TESTS ==========" << endl;
+
+    /* 
+     * each page stores 4096 / 16 = 256 key-value pairs (for terminal nodes) or
+     * 4096 / 8 = 512 keys (for non-terminal nodes)
+     */
+    size_t n = 256 + 1; // height 2
+    // size_t n = 256 * (256 + 1) + 1; // height 3
+    // size_t n = 256 * (256 * (256 + 1) + 1) + 1; // height 4
+
+    // KeyValueStore db = KeyValueStore(n * DB_PAIR_SIZE + 1); // writes zero SSTs (all in memory)
+    // KeyValueStore db = KeyValueStore(n * DB_PAIR_SIZE); // writes one SST
+    KeyValueStore db = KeyValueStore(n * DB_PAIR_SIZE / 2); // writes two SSTs (+ some in memory)
+
+    // generate random key-value pairs
+    unordered_map<db_key_t, db_val_t> pairs;
+    while (pairs.size() < n) {
+        db_key_t key = rand();
+        db_val_t val = rand();
+        pairs[key] = val;
+    }
+
+    for (auto pair : pairs) {
+        db_key_t key = pair.first;
+        db_val_t val = pair.second;
+        db.put(key, val);
+    }
+    cout << "Passed " << n << " put operations." << endl << endl;
+
+    cout << "Testing " << n << " get operations (with binary search)..." << endl;
+    int i = 0;
+    for (auto pair : pairs) {
+        db_key_t key = pair.first;
+        db_val_t val = pair.second;
+        assert(db.get(key, search_alg::binary_search) == val);
+        if (i > 0 && i % 100 == 0) {
+            cout << "Tested " << i << " get operations so far..." << endl;
+        }
+        i++;
+    }
+    cout << "Done! Passed " << n << " get operations." << endl << endl;
+
+    vector<db_key_t> keys;
+    for (auto pair : pairs) {
+        db_key_t key = pair.first;
+        keys.push_back(key);
+    }
+    sort(keys.begin(), keys.end());
+
+    vector<pair<db_key_t, db_key_t> > ranges = {
+        make_pair(keys[0], keys[0]),
+        make_pair(keys[n - 1], keys[n - 1]),
+        make_pair(keys[1], keys[0]),
+        make_pair(keys[0], keys[n - 1]),
+        make_pair(DB_KEY_MIN, DB_KEY_MAX),
+        make_pair(keys[0], keys[n / 2]),
+        make_pair(keys[n / 2], keys[n - 1]),
+        make_pair(keys[n / 4], keys[3 * n / 4])
+    };
+    for (auto range : ranges) {
+        db_key_t min_key = range.first;
+        db_key_t max_key = range.second;
+
+        unordered_map<db_key_t, db_val_t> a;
+        unordered_map<db_key_t, db_val_t> b;
+        for (auto pair : pairs) {
+            db_key_t key = pair.first;
+            db_val_t val = pair.second;
+            if (key >= min_key && key <= max_key) {
+                a.insert(make_pair(key, val));
+            }
+        }
+        vector<pair<db_key_t, db_val_t> > pairs_in_range = db.scan(
+            min_key,
+            max_key,
+            search_alg::binary_search
+        );
+        for (auto pair : pairs_in_range) {
+            db_key_t key = pair.first;
+            db_val_t val = pair.second;
+            b.insert(make_pair(key, val));
+        }
+        assert(a == b);
+        cout << "Passed scan operation for range [" << min_key << ", " << max_key  << "]." << endl;
+    }
+    /* ================= BINARY SEARCH GET, PUT, SCAN TESTS ================= */
+
+    // int memtable_size = 144;
+    // string eviction_policy = "clock";
+    // int initial_num_bits = 2;
+    // int maximum_bp_size = 4;
+    // int maximum_num_items_threshold = 6;
 
     // Want the max size to be 9 key-value pairs with each pair taking up 16 bytes
 

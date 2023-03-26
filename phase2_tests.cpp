@@ -1,9 +1,12 @@
 #include <iostream>
+#include <algorithm>
 #include <cassert>
 #include <unistd.h>
 #include "kv_store.h"
 #include "memtable.h"
 #include "bp_directory.h"
+#include <unordered_map>
+#include <vector>
 
 using namespace std;
 
@@ -125,42 +128,90 @@ int main(int argc, char *argv[])
     // // TODO JUN: test b tree stuff, might have to edit phase 1 tests for that
 
     /* ==================== B-TREE GET, PUT, SCAN TESTS ==================== */
-    int n = 256 + 1; // height 2
-    // int n = 256 * (256 + 1) + 1; // height 3
-    // int n = 256 * (256 * (256 + 1) + 1) + 1; // height 4
+    cout << "============== B-TREE GET, PUT, SCAN TESTS ==============" << endl;
 
-    KeyValueStore db = KeyValueStore(n * 16); // this writes an SST 
-    // KeyValueStore db = KeyValueStore(n * 16 + 1); // this does NOT write an SST
+    /* 
+     * each page stores 4096 / 16 = 256 key-value pairs (for terminal nodes) or
+     * 4096 / 8 = 512 keys (for non-terminal nodes)
+     */
+    size_t n = 256 + 1; // height 2
+    // size_t n = 256 * (256 + 1) + 1; // height 3
+    // size_t n = 256 * (256 * (256 + 1) + 1) + 1; // height 4
 
-    // each page stores 4096 / 16 = 256 key-value pairs (for terminal nodes) or 
-    // 4096 / 8 = 512 keys (for non-terminal nodes)
+    // KeyValueStore db = KeyValueStore(n * DB_PAIR_SIZE + 1); // writes zero SSTs (all in memory)
+    // KeyValueStore db = KeyValueStore(n * DB_PAIR_SIZE); // writes one SST
+    KeyValueStore db = KeyValueStore(n * DB_PAIR_SIZE / 2); // writes two SSTs (+ some in memory)
 
-    for (int i = 0; i < n; i++) {
-        db.put(i, i);
+    // generate random key-value pairs
+    unordered_map<db_key_t, db_val_t> pairs;
+    while (pairs.size() < n) {
+        db_key_t key = rand();
+        db_val_t val = rand();
+        pairs[key] = val;
     }
 
-    db.read_from_file("sst_1.bin"); 
+    for (auto pair : pairs) {
+        db_key_t key = pair.first;
+        db_val_t val = pair.second;
+        db.put(key, val);
+    }
+    cout << "Passed " << n << " put operations." << endl << endl;
 
-    // for (int i = 0; i < n; i++) {
-    //     assert(db.get(i, search_alg::b_tree_search) == i);
-    //     if (i % 100 == 0) {
-    //         cout << i << endl;
-    //     }
-    // }
+    cout << "Testing " << n << " get operations (with B-tree search)..." << endl;
+    int i = 0;
+    for (auto pair : pairs) {
+        db_key_t key = pair.first;
+        db_val_t val = pair.second;
+        assert(db.get(key, search_alg::b_tree_search) == val);
+        if (i > 0 && i % 100 == 0) {
+            cout << "Tested " << i << " get operations so far..." << endl;
+        }
+        i++;
+    }
+    cout << "Done! Passed " << n << " get operations." << endl << endl;
 
-    // for (int i = 0; i < n; i++) {
-    //     assert(db.get(i, search_alg::binary_search) == i);
-    //     if (i % 100 == 0) {
-    //         cout << i << endl;
-    //     }
-    // }
+    vector<db_key_t> keys;
+    for (auto pair : pairs) {
+        db_key_t key = pair.first;
+        keys.push_back(key);
+    }
+    sort(keys.begin(), keys.end());
 
-    // vector<pair<db_key_t, db_val_t> > pairs = db.scan(1, n - 1, search_alg::b_tree_search);
-    // vector<pair<db_key_t, db_val_t> > pairs = db.scan(1, n - 1, search_alg::binary_search);
+    vector<pair<db_key_t, db_key_t> > ranges = {
+        make_pair(keys[0], keys[0]),
+        make_pair(keys[n - 1], keys[n - 1]),
+        make_pair(keys[1], keys[0]),
+        make_pair(keys[0], keys[n - 1]),
+        make_pair(DB_KEY_MIN, DB_KEY_MAX),
+        make_pair(keys[0], keys[n / 2]),
+        make_pair(keys[n / 2], keys[n - 1]),
+        make_pair(keys[n / 4], keys[3 * n / 4])
+    };
+    for (auto range : ranges) {
+        db_key_t min_key = range.first;
+        db_key_t max_key = range.second;
 
-    // for (int i = 0; i < pairs.size(); i++) {
-    //     cout << pairs[i].first << ":" << pairs[i].second << ", ";
-    // }
-    // cout << endl;
+        unordered_map<db_key_t, db_val_t> a;
+        unordered_map<db_key_t, db_val_t> b;
+        for (auto pair : pairs) {
+            db_key_t key = pair.first;
+            db_val_t val = pair.second;
+            if (key >= min_key && key <= max_key) {
+                a.insert(make_pair(key, val));
+            }
+        }
+        vector<pair<db_key_t, db_val_t> > pairs_in_range = db.scan(
+            min_key,
+            max_key,
+            search_alg::b_tree_search
+        );
+        for (auto pair : pairs_in_range) {
+            db_key_t key = pair.first;
+            db_val_t val = pair.second;
+            b.insert(make_pair(key, val));
+        }
+        assert(a == b);
+        cout << "Passed scan operation for range [" << min_key << ", " << max_key  << "]." << endl;
+    }
     /* ==================== B-TREE GET, PUT, SCAN TESTS ==================== */
 }

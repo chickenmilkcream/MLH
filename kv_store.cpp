@@ -49,17 +49,17 @@ KeyValueStore::KeyValueStore(size_t memtable_size,
 }
 
 void KeyValueStore::bpread(string filename, int fd, void *buf, off_t fp) {
-    // aligned_pread(fd, buf, PAGE_SIZE, fp);
+    aligned_pread(fd, buf, PAGE_SIZE, fp);
 
-    size_t b = PAGE_SIZE / DB_PAIR_SIZE; // number of key-value pairs per page
-    try  {
-        // TODO: can page_content be binary?
-        pair<db_key_t, db_val_t> *page = this->buffer_pool.get_page(filename, fp / PAGE_SIZE)->page_content;
-        memcpy(buf, page, PAGE_SIZE);
-    } catch (out_of_range &e) {
-        aligned_pread(fd, buf, PAGE_SIZE, fp);
-        this->buffer_pool.insert_page((pair<db_key_t, db_val_t> *) buf, b, filename, fp / PAGE_SIZE);
-    }
+    // size_t b = PAGE_SIZE / DB_PAIR_SIZE; // number of key-value pairs per page
+    // try  {
+    //     // TODO: can page_content be binary?
+    //     pair<db_key_t, db_val_t> *page = this->buffer_pool.get_page(filename, fp / PAGE_SIZE)->page_content;
+    //     memcpy(buf, page, PAGE_SIZE);
+    // } catch (out_of_range &e) {
+    //     aligned_pread(fd, buf, PAGE_SIZE, fp);
+    //     this->buffer_pool.insert_page((pair<db_key_t, db_val_t> *) buf, b, filename, fp / PAGE_SIZE);
+    // }
 }
 
 void KeyValueStore::open_db(string db)
@@ -209,7 +209,7 @@ void KeyValueStore::put(db_key_t key, db_val_t val)
 {
     this->memtable.put(key, val);
 
-    if (this->memtable.size == this->memtable.max_size)
+    if (this->memtable.size + DB_PAIR_SIZE > this->memtable.max_size)
     {
         this->serialize();
         this->sst_count++;
@@ -219,6 +219,10 @@ void KeyValueStore::put(db_key_t key, db_val_t val)
 vector<pair<db_key_t, db_val_t> > KeyValueStore::scan(db_key_t min_key, db_key_t max_key, search_alg alg)
 {
     size_t b = PAGE_SIZE / DB_PAIR_SIZE; // number of key-value pairs per page
+
+    if (min_key > max_key) {
+        return {};
+    }
 
     vector<pair<db_key_t, db_val_t> > pairs = this->memtable.scan(min_key, max_key);
     
