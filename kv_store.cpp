@@ -1,13 +1,11 @@
-#include "kv_store.h"
-#include "memtable.h"
-
-#include <iostream>
-#include <vector>
-#include <utility>
-#include <fstream>
-#include <fcntl.h>
-#include <unistd.h>
 #include <cmath>
+#include <cstring>
+#include <fcntl.h>
+#include <iostream>
+#include <unistd.h>
+#include <vector>
+
+#include "kv_store.h"
 
 using namespace std;
 
@@ -22,9 +20,7 @@ long nfloor(long x, long n) {
 ssize_t aligned_pwrite(int fd, const void *buf, size_t n, off_t fp) {
     size_t size = nceil(n, PAGE_SIZE);
     void *aligned_buf = aligned_alloc(PAGE_SIZE, size);
-    for (size_t i = 0; i < n; i++) {
-        ((char *) aligned_buf)[i] = ((char *) buf)[i];
-    }
+    memcpy(aligned_buf, buf, n);
     ssize_t n_written = pwrite(fd, aligned_buf, size, fp); // fp must be page-aligned
     free(aligned_buf);
     return n_written;
@@ -34,37 +30,55 @@ ssize_t aligned_pread(int fd, void *buf, size_t n, off_t fp) {
     size_t size = nceil(n, PAGE_SIZE);
     void *aligned_buf = aligned_alloc(PAGE_SIZE, size);
     ssize_t n_read = pread(fd, aligned_buf, size, fp); // fp must be page-aligned
-    for (size_t i = 0; i < n; i++) {
-        ((char *) buf)[i] = ((char *) aligned_buf)[i];
-    }
+    memcpy(buf, aligned_buf, n);
     free(aligned_buf);
     return n_read;
 }
 
-KeyValueStore::KeyValueStore(size_t memtable_size)
+KeyValueStore::KeyValueStore(size_t memtable_size,
+                             string eviction_policy,
+                             int initial_num_bits,
+                             int maximum_bp_size,
+                             int maximum_num_items_threshold)
 {
     this->memtable = Memtable(memtable_size);
-    this->num_sst = 1;
+    this->buffer_pool = BPDirectory(eviction_policy, initial_num_bits, maximum_bp_size, maximum_num_items_threshold);
+
+    this->sst_count = 1;
     this->memtable_size = memtable_size;
+}
+
+void KeyValueStore::bpread(string filename, int fd, void *buf, off_t fp) {
+    // aligned_pread(fd, buf, PAGE_SIZE, fp);
+
+    size_t b = PAGE_SIZE / DB_PAIR_SIZE; // number of key-value pairs per page
+    try  {
+        // TODO: can page_content be binary?
+        pair<db_key_t, db_val_t> *page = this->buffer_pool.get_page(filename, fp / PAGE_SIZE)->page_content;
+        memcpy(buf, page, PAGE_SIZE);
+    } catch (out_of_range &e) {
+        aligned_pread(fd, buf, PAGE_SIZE, fp);
+        this->buffer_pool.insert_page((pair<db_key_t, db_val_t> *) buf, b, filename, fp / PAGE_SIZE);
+    }
 }
 
 void KeyValueStore::open_db(string db)
 {
-    // todo load all SSTs i think...
-    // TODO: discuss with team what else to do here
+    // TODO TEAM: clarify load all SSTs??
+    // TODO TEAM: discuss with team what else to do here
 }
 
 void KeyValueStore::close_db()
 {
     this->serialize();
-    // TODO: discuss with team what else to do here
+    this->buffer_pool.free_all_pages();
 }
 
 /*
  * helper function for KeyValueStore::get and KeyValueStore::scan
  * assigns fp to the offset of the page containing key
  */ 
-void KeyValueStore::binary_search(int fd, db_key_t key, vector<size_t> sizes, size_t height, off_t &start, off_t &fp) {
+void KeyValueStore::binary_search(string filename, int fd, db_key_t key, vector<size_t> sizes, size_t height, off_t &start, off_t &fp) {
     size_t b = PAGE_SIZE / DB_PAIR_SIZE; // number of key-value pairs per page
 
     start = fp;
@@ -82,7 +96,7 @@ void KeyValueStore::binary_search(int fd, db_key_t key, vector<size_t> sizes, si
         ssize_t mid = (low + high) / 2;
 
         fp = mid * PAGE_SIZE;
-        aligned_pread(fd, buf, PAGE_SIZE, fp);
+        this->bpread(filename, fd, buf, fp);
 
         if (((pair<db_key_t, db_val_t> *) buf)[min(b, sizes[height - 1] - (fp - start) / DB_PAIR_SIZE) - 1].first < key) {
             low = mid + 1;
@@ -98,13 +112,13 @@ void KeyValueStore::binary_search(int fd, db_key_t key, vector<size_t> sizes, si
  * helper function for KeyValueStore::get and KeyValueStore::scan
  * assigns fp to the offset of the page containing key
  */ 
-void KeyValueStore::b_tree_search(int fd, db_key_t key, vector<size_t> sizes, size_t height, off_t &start, off_t &fp) {
+void KeyValueStore::b_tree_search(string filename, int fd, db_key_t key, vector<size_t> sizes, size_t height, off_t &start, off_t &fp) {
     size_t b = PAGE_SIZE / DB_PAIR_SIZE; // number of key-value pairs per page
 
     start = fp;
 
     char buf[PAGE_SIZE];
-    aligned_pread(fd, buf, PAGE_SIZE, fp);
+    this->bpread(filename, fd, buf, fp);
 
     off_t offset = fp; // fp is page-aligned but offset is not stricly page-aligned
     size_t i = 0;
@@ -131,7 +145,7 @@ void KeyValueStore::b_tree_search(int fd, db_key_t key, vector<size_t> sizes, si
         fp = nfloor(offset, PAGE_SIZE);
         start += nceil(sizes[i] * DB_KEY_SIZE, PAGE_SIZE);
 
-        aligned_pread(fd, buf, PAGE_SIZE, fp);
+        this->bpread(filename, fd, buf, fp);
         i++;
     }
 }
@@ -147,7 +161,7 @@ db_val_t KeyValueStore::get(db_key_t key, search_alg alg)
     } catch (invalid_argument &e) {
         // Couldn't find it in the memtable
         // Loop through the SSTs from latest to oldest
-        for (size_t i = this->num_sst - 1; i > 0; i--) {
+        for (size_t i = this->sst_count - 1; i > 0; i--) {
             const char *filename = ("sst_" + to_string(i) + ".bin").c_str();
             int fd = open(filename, O_RDONLY | O_DIRECT | O_SYNC);
             off_t start = 0;
@@ -155,19 +169,19 @@ db_val_t KeyValueStore::get(db_key_t key, search_alg alg)
 
             vector<size_t> sizes;
             size_t height;
-            this->sizes(fd, fp, sizes, height);
+            this->sizes(filename, fd, fp, sizes, height);
 
             if (alg == search_alg::binary_search) {
-                this->binary_search(fd, key, sizes, height, start, fp);
+                this->binary_search(filename, fd, key, sizes, height, start, fp);
             } else if (alg == search_alg::b_tree_search) {
-                this->b_tree_search(fd, key, sizes, height, start, fp);
+                this->b_tree_search(filename, fd, key, sizes, height, start, fp);
             } else {
                 close(fd);
                 throw invalid_argument("Search algorithm not found");
             }
 
             char buf[PAGE_SIZE];
-            aligned_pread(fd, buf, PAGE_SIZE, fp);
+            this->bpread(filename, fd, buf, fp);
             close(fd);
 
             // binary search in memory
@@ -198,7 +212,7 @@ void KeyValueStore::put(db_key_t key, db_val_t val)
     if (this->memtable.size == this->memtable.max_size)
     {
         this->serialize();
-        this->num_sst++;
+        this->sst_count++;
     }
 }
 
@@ -209,7 +223,7 @@ vector<pair<db_key_t, db_val_t> > KeyValueStore::scan(db_key_t min_key, db_key_t
     vector<pair<db_key_t, db_val_t> > pairs = this->memtable.scan(min_key, max_key);
     
     // Loop through the SSTs from latest to oldest
-    for (size_t i = this->num_sst - 1; i > 0; i--) {
+    for (size_t i = this->sst_count - 1; i > 0; i--) {
         const char *filename = ("sst_" + to_string(i) + ".bin").c_str();
         int fd = open(filename, O_RDONLY | O_DIRECT | O_SYNC);
         off_t start = 0;
@@ -217,19 +231,19 @@ vector<pair<db_key_t, db_val_t> > KeyValueStore::scan(db_key_t min_key, db_key_t
 
         vector<size_t> sizes;
         size_t height;
-        this->sizes(fd, fp, sizes, height);
+        this->sizes(filename, fd, fp, sizes, height);
 
         if (alg == search_alg::binary_search) {
-            this->binary_search(fd, min_key, sizes, height, start, fp);
+            this->binary_search(filename, fd, min_key, sizes, height, start, fp);
         } else if (alg == search_alg::b_tree_search) {
-            this->b_tree_search(fd, min_key, sizes, height, start, fp);
+            this->b_tree_search(filename, fd, min_key, sizes, height, start, fp);
         } else {
             close(fd);
             throw invalid_argument("Search algorithm not found");
         }
 
         char buf[PAGE_SIZE];
-        aligned_pread(fd, buf, PAGE_SIZE, fp);
+        this->bpread(filename, fd, buf, fp);
         fp += PAGE_SIZE;
 
         // binary search in memory (for key greater than or equal to min_key)
@@ -254,7 +268,7 @@ vector<pair<db_key_t, db_val_t> > KeyValueStore::scan(db_key_t min_key, db_key_t
             pairs.push_back(((pair<db_key_t, db_val_t> *) buf)[k]);
             k++;
             if (k == b) {
-                aligned_pread(fd, buf, PAGE_SIZE, fp);
+                this->bpread(filename, fd, buf, fp);
                 fp += PAGE_SIZE;
                 k = 0;
             }
@@ -268,11 +282,11 @@ vector<pair<db_key_t, db_val_t> > KeyValueStore::scan(db_key_t min_key, db_key_t
 
 void KeyValueStore::print() { this->memtable.print(); }
 
-void KeyValueStore::sizes(int fd, off_t &fp, vector<size_t> &sizes, size_t &height) {
+void KeyValueStore::sizes(string filename, int fd, off_t &fp, vector<size_t> &sizes, size_t &height) {
     fp = 0;
 
     char buf[PAGE_SIZE];
-    aligned_pread(fd, buf, PAGE_SIZE, fp);
+    this->bpread(filename, fd, buf, fp);
     fp += PAGE_SIZE;
 
     size_t i = 0;
@@ -280,7 +294,7 @@ void KeyValueStore::sizes(int fd, off_t &fp, vector<size_t> &sizes, size_t &heig
         sizes.push_back(((size_t *) buf)[i]);
         i++;
         if (i == PAGE_SIZE / sizeof(size_t)) {
-            aligned_pread(fd, buf, PAGE_SIZE, fp);
+            this->bpread(filename, fd, buf, fp);
             fp += PAGE_SIZE;
             i = 0;
         }
@@ -332,7 +346,7 @@ void KeyValueStore::read_from_file(const char *filename)
     off_t fp = 0;
 
     size_t height;
-    this->sizes(fd, fp, sizes, height);
+    this->sizes(filename, fd, fp, sizes, height);
 
     for (size_t i = 0; i < height - 1; i++) {
         non_terminal_nodes.push_back({});
@@ -433,6 +447,6 @@ void KeyValueStore::serialize()
     sizes.push_back(size);
     sizes.push_back(0); // write null terminator
 
-    const char *filename = ("sst_" + to_string(this->num_sst) + ".bin").c_str();
+    const char *filename = ("sst_" + to_string(this->sst_count) + ".bin").c_str();
     this->write_to_file(filename, sizes, non_terminal_nodes, terminal_nodes);
 }
