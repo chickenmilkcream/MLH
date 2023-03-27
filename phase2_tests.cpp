@@ -123,10 +123,6 @@ int main(int argc, char *argv[])
     std::cout << "* Function get_page passed \n";
     std::cout << "--------------------------------------------------------------- \n";
 
-    // // TODO AMY: test edit directory size
-    // // TODO JASON: test calling evict_directory during extend_directory with different policies
-    // // TODO JUN: test b tree stuff, might have to edit phase 1 tests for that
-
     /* ==================== B-TREE GET, PUT, SCAN TESTS ==================== */
     cout << "============== B-TREE GET, PUT, SCAN TESTS ==============" << endl;
 
@@ -140,7 +136,7 @@ int main(int argc, char *argv[])
 
     // KeyValueStore db = KeyValueStore(n * DB_PAIR_SIZE + 1); // writes zero SSTs (all in memory)
     // KeyValueStore db = KeyValueStore(n * DB_PAIR_SIZE); // writes one SST
-    KeyValueStore db = KeyValueStore(n * DB_PAIR_SIZE / 2); // writes two SSTs (+ some in memory)
+    KeyValueStore db = KeyValueStore(n * DB_PAIR_SIZE / 2, eviction_policy, initial_num_bits, maximum_bp_size, maximum_num_items_threshold); // writes two SSTs (+ some in memory)
 
     // generate random key-value pairs
     unordered_map<db_key_t, db_val_t> pairs;
@@ -163,7 +159,7 @@ int main(int argc, char *argv[])
         db_key_t key = pair.first;
         db_val_t val = pair.second;
         assert(db.get(key, search_alg::b_tree_search) == val);
-        if (i > 0 && i % 100 == 0) {
+        if (i > 0 && i % 10000 == 0) {
             cout << "Tested " << i << " get operations so far..." << endl;
         }
         i++;

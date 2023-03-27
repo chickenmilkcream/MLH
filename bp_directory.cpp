@@ -58,13 +58,13 @@ PageFrame *BPDirectory::clock_find_victim() {
             continue;
         }
 
-        cout<< "clock cycle count " << this->clock_cycle_count << " " << this->directory[this->directory_keys[this->clock_hand_key]]->clock_cycle_count << endl;
+        // cout<< "clock cycle count " << this->clock_cycle_count << " " << this->directory[this->directory_keys[this->clock_hand_key]]->clock_cycle_count << endl;
         if (this->directory[this->directory_keys[this->clock_hand_key]]->clock_cycle_count < this->clock_cycle_count) {
             // cout << "Potential victim page number " << potential_victim->page_number << endl;
-            cout << "clock hand located at page" << potential_victim->page_number << " key "
-                 << this->directory_keys[clock_hand_key] << " oof " << clock_hand_key << endl;
+            // cout << "clock hand located at page" << potential_victim->page_number << " key "
+            //     << this->directory_keys[clock_hand_key] << " oof " << clock_hand_key << endl;
             if (potential_victim->get_reference_bit() == 0) {
-                cout << "Found victim page number " << potential_victim->page_number << endl;
+                // cout << "Found victim page number " << potential_victim->page_number << endl;
                 return potential_victim;
             } else {
                 potential_victim->set_reference_bit(0);
@@ -98,7 +98,7 @@ void BPDirectory::move_clock_hand() {
 void BPDirectory::update_directory_keys()
 {
     this->directory_keys.clear();
-    cout << "Updating directory keys" << endl;
+    // cout << "Updating directory keys" << endl;
     for (auto it = this->directory.begin(); it != this->directory.end(); ++it)
     {
         this->directory_keys.push_back(it->first);
@@ -128,7 +128,8 @@ void BPDirectory::insert_page(pair<db_key_t, db_val_t> *page_content, int num_pa
     {
         db_key_t key = page_content[i].first;
         db_val_t val = page_content[i].second;
-        new (&malloc_page[i]) pair<db_key_t, db_val_t>(key, val);
+        malloc_page[i] = *(new pair<db_key_t, db_val_t>(key, val));
+        // new (&malloc_page[i]) pair<db_key_t, db_val_t>(key, val);
     }
 //    cout << "adding page frame" << endl;
     PageFrame* newNode = this->directory[directory_key]->add_page_frame(malloc_page, num_pairs_in_page, sst_name, page_number);
@@ -236,13 +237,7 @@ void BPDirectory::evict_page(PageFrame* pageFrame) {
     string source = pageFrame->sst_name + to_string(pageFrame->page_number);
     string directory_key = this->hash_string(source);
     this->directory[directory_key]->remove_page_frame(pageFrame);
-
-    // free the memory when you're done
-    for (int i = 0; i < pageFrame->num_pairs_in_page; ++i)
-    {
-        pageFrame->page_content[i].~pair<db_key_t, db_val_t>();
-    }
-//    free(pageFrame);
+    //free(pageFrame);
 }
 
 vector<string> BPDirectory::generate_binary_strings(int n, string str)
