@@ -20,6 +20,7 @@ long nfloor(long x, long n) {
 ssize_t aligned_pwrite(int fd, const void *buf, size_t n, off_t fp) {
     size_t size = nceil(n, PAGE_SIZE);
     void *aligned_buf = aligned_alloc(PAGE_SIZE, size);
+    memset(aligned_buf, 0, size);
     memcpy(aligned_buf, buf, n);
     ssize_t n_written = pwrite(fd, aligned_buf, size, fp); // fp must be page-aligned
     free(aligned_buf);
@@ -29,6 +30,7 @@ ssize_t aligned_pwrite(int fd, const void *buf, size_t n, off_t fp) {
 ssize_t aligned_pread(int fd, void *buf, size_t n, off_t fp) {
     size_t size = nceil(n, PAGE_SIZE);
     void *aligned_buf = aligned_alloc(PAGE_SIZE, size);
+    memset(aligned_buf, 0, size);
     ssize_t n_read = pread(fd, aligned_buf, size, fp); // fp must be page-aligned
     memcpy(buf, aligned_buf, n);
     free(aligned_buf);
