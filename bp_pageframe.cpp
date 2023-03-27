@@ -7,7 +7,7 @@
 
 #include <fcntl.h>
 
-PageFrame::PageFrame(pair<db_key_t, db_val_t> *page_content, int num_pairs_in_page, string sst_name, int page_number)
+PageFrame::PageFrame(void *page_content, int num_pairs_in_page, string sst_name, int page_number)
 {
     this->page_content = page_content;
     this->sst_name = sst_name;

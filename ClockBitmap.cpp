@@ -5,7 +5,6 @@
 #include "ClockBitmap.h"
 #include <iostream>
 
-
 ClockBitmap::ClockBitmap(int capacity) {
     this->capacity = capacity;
     for (int i = 0; i < capacity; i++) {
@@ -13,7 +12,7 @@ ClockBitmap::ClockBitmap(int capacity) {
     }
 }
 
-PageFrame* ClockBitmap::get(int key) {
+shared_ptr<PageFrame> ClockBitmap::get(int key) {
     // probably don't need this function...?
     return 0;
 }
@@ -30,10 +29,10 @@ void ClockBitmap::set_capacity(int val) {
     this->capacity = val;
 }
 
-PageFrame *ClockBitmap::put(int key, PageFrame *value) {
+shared_ptr<PageFrame> ClockBitmap::put(int key, shared_ptr<PageFrame> value) {
     // put a page into the cache and return the evicted page using clock eviction algorithm
 
-    PageFrame* evicted_page = nullptr;
+    shared_ptr<PageFrame> evicted_page = nullptr;
     while (true) {
         if (this->bitmap[clock_hand] == nullptr) {
             this->bitmap[clock_hand] = value;
@@ -50,15 +49,15 @@ PageFrame *ClockBitmap::put(int key, PageFrame *value) {
 }
 
 
-void ClockBitmap::use_item(PageFrame* pageFrame) {
+void ClockBitmap::use_item(shared_ptr<PageFrame> pageFrame) {
     // set the reference bit of the page to 1
     pageFrame->set_reference_bit(1);
 }
 
 
-vector<PageFrame *> ClockBitmap::evict_pages() {
+vector<shared_ptr<PageFrame>> ClockBitmap::evict_pages() {
     // TODO this function only called during resize
-    vector<PageFrame *>evicted_pages = vector<PageFrame*>();
+    vector<shared_ptr<PageFrame>> evicted_pages = vector<shared_ptr<PageFrame>>();
 
 
     return evicted_pages;

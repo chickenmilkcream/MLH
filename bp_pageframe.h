@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <string>
 #include <iostream>
+#include <memory>
 
 using namespace std;
 
@@ -13,12 +14,12 @@ typedef int64_t db_val_t;
 class PageFrame
 {
 public:
-    PageFrame(pair<db_key_t, db_val_t> *page_content, int num_pairs_in_page, string sst_name, int page_number);
+    PageFrame(void *page_content, int num_pairs_in_page, string sst_name, int page_number);
     string sst_name;
     int page_number;
     int num_pairs_in_page;
-    pair<db_key_t, db_val_t> *page_content;
-    PageFrame *next;
+    void *page_content;
+    shared_ptr<PageFrame> next;
     int clock_bit;
     int id;
 

@@ -10,6 +10,9 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <memory>
+#include <cstring>
+
+#define PAGE_SIZE 4096
 
 using namespace std;
 
@@ -41,7 +44,7 @@ BPDirectory::BPDirectory(string eviction_policy, int initial_num_bits, int maxim
 }
 
 
-PageFrame *BPDirectory::clock_find_victim() {
+shared_ptr<PageFrame> BPDirectory::clock_find_victim() {
     // find the victim using clock eviction policy and return the victim
     // We will start at the clock hand and go around the clock until we find a victim
     // If we don't find a victim, we will return nullptr
@@ -53,7 +56,7 @@ PageFrame *BPDirectory::clock_find_victim() {
         this->move_clock_hand();
         // cout << "clock hand location " << this->clock_hand_location << endl;
 
-        PageFrame* potential_victim = this->clock_hand_location;
+        shared_ptr<PageFrame> potential_victim = this->clock_hand_location;
         if (potential_victim == nullptr) {
             continue;
         }
@@ -115,7 +118,7 @@ void BPDirectory::set_maximum_bp_size(int value)
     evict_until_under_max_bp_size();
 }
 
-void BPDirectory::insert_page(pair<db_key_t, db_val_t> *page_content, int num_pairs_in_page, string sst_name, int page_number)
+void BPDirectory::insert_page(void *page_content, int num_pairs_in_page, string sst_name, int page_number)
 {
     string source = sst_name + to_string(page_number);
     string directory_key = this->hash_string(source);
@@ -123,16 +126,17 @@ void BPDirectory::insert_page(pair<db_key_t, db_val_t> *page_content, int num_pa
 
 //    cout << "mallocing page" << endl;
     // Malloc memory for the page
-    pair<db_key_t, db_val_t> *malloc_page = (pair<db_key_t, db_val_t> *)malloc(num_pairs_in_page * sizeof(pair<db_key_t, db_val_t>));
-    for (int i = 0; i < num_pairs_in_page; ++i)
-    {
-        db_key_t key = page_content[i].first;
-        db_val_t val = page_content[i].second;
-        malloc_page[i] = *(new pair<db_key_t, db_val_t>(key, val));
+    void *malloc_page = malloc(PAGE_SIZE);
+    memcpy(malloc_page, page_content, PAGE_SIZE);
+    // for (int i = 0; i < num_pairs_in_page; ++i)
+    // {
+    //     db_key_t key = page_content[i].first;
+    //     db_val_t val = page_content[i].second;
+    //     malloc_page[i] = *(new pair<db_key_t, db_val_t>(key, val));
         // new (&malloc_page[i]) pair<db_key_t, db_val_t>(key, val);
-    }
+    // }
 //    cout << "adding page frame" << endl;
-    PageFrame* newNode = this->directory[directory_key]->add_page_frame(malloc_page, num_pairs_in_page, sst_name, page_number);
+    shared_ptr<PageFrame> newNode = this->directory[directory_key]->add_page_frame(malloc_page, num_pairs_in_page, sst_name, page_number);
     this->current_num_items += 1;
     this->page_id += 1;
     newNode->set_id(this->page_id);
@@ -170,7 +174,7 @@ void BPDirectory::insert_page(pair<db_key_t, db_val_t> *page_content, int num_pa
 }
 
 void BPDirectory::evict_until_under_max_bp_size() {
-    PageFrame* pageToEvict = nullptr;
+    shared_ptr<PageFrame> pageToEvict = nullptr;
     while (this->current_bp_size > this->maximum_bp_size) {
         if (this->policy == "LRU") {
             pageToEvict = this->lru_cache->evict_one_page_item();
@@ -188,7 +192,7 @@ void BPDirectory::evict_until_under_max_bp_size() {
     }
 }
 
-void BPDirectory::mark_item_as_used(PageFrame* pageFrame) {
+void BPDirectory::mark_item_as_used(shared_ptr<PageFrame> pageFrame) {
     if (this->policy == "LRU") {
         this->lru_cache->mark_item_as_used(pageFrame);
     }
@@ -198,12 +202,12 @@ void BPDirectory::mark_item_as_used(PageFrame* pageFrame) {
     }
 }
 
-PageFrame* BPDirectory::get_page(string sst_name, int page_number)
+shared_ptr<PageFrame> BPDirectory::get_page(string sst_name, int page_number)
 {
     string source = sst_name + to_string(page_number);
     string directory_key = this->hash_string(source);
 
-    PageFrame* pageFrame = this->directory[directory_key]->find_page_frame(sst_name, page_number);
+    shared_ptr<PageFrame> pageFrame = this->directory[directory_key]->find_page_frame(sst_name, page_number);
     this->mark_item_as_used(pageFrame);
     return pageFrame;
 }
@@ -232,7 +236,7 @@ void BPDirectory::extend_directory()
     this->update_directory_keys();
 }
 
-void BPDirectory::evict_page(PageFrame* pageFrame) {
+void BPDirectory::evict_page(shared_ptr<PageFrame> pageFrame) {
     // remove the pageFrame from the directory hash map and linked list
     string source = pageFrame->sst_name + to_string(pageFrame->page_number);
     string directory_key = this->hash_string(source);
@@ -285,7 +289,7 @@ void BPDirectory::rehash_linked_list(map<string, shared_ptr<BPLinkedList> > *dir
         key_to_new_linkedlist[shared_key] = make_shared<BPLinkedList>();
     }
 
-    PageFrame *current = (*directory)[key]->head;
+    shared_ptr<PageFrame> current = (*directory)[key]->head;
     while (current != nullptr)
     {
         string source = current->sst_name + to_string(current->page_number);

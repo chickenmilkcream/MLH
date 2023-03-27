@@ -9,7 +9,7 @@
 
 LRUCache::LRUCache() :head(nullptr), tail(nullptr) {}
 
-void LRUCache::mark_item_as_used(PageFrame *pageFrame)
+void LRUCache::mark_item_as_used(shared_ptr<PageFrame> pageFrame)
 {
     if (pageFrame == nullptr) {
         return;
@@ -23,7 +23,7 @@ void LRUCache::mark_item_as_used(PageFrame *pageFrame)
 
     }
 
-    CacheNode* node = it->second;
+    shared_ptr<CacheNode> node = it->second;
 //    cout << "before move to front: " << endl;
 //    print_list();
 //    cout << "after move to front: " << endl;
@@ -32,22 +32,22 @@ void LRUCache::mark_item_as_used(PageFrame *pageFrame)
 
 
 
-PageFrame * LRUCache::evict_one_page_item() {
+shared_ptr<PageFrame> LRUCache::evict_one_page_item() {
     if (tail == nullptr) {
         return nullptr;
     }
     int key = tail->key;
-    PageFrame *pageFrame = tail->value;
+    shared_ptr<PageFrame> pageFrame = tail->value;
     // cout << "evicting page with key: " << key << endl;
     cache.erase(key);
     remove(tail);
     return pageFrame;
 }
 
-void LRUCache::put(int key, PageFrame *value) {
+void LRUCache::put(int key, shared_ptr<PageFrame> value) {
     auto it = cache.find(key);
     if (it != cache.end()) {
-        CacheNode* node = it->second;
+        shared_ptr<CacheNode> node = it->second;
         node->value = value; // update value
         moveToFront(node);
     } else {
@@ -57,7 +57,7 @@ void LRUCache::put(int key, PageFrame *value) {
 ////            remove(tail);
 //            evict_one_page_item();
 //        }
-        CacheNode* node = new CacheNode(key, value);
+        shared_ptr<CacheNode> node = make_shared<CacheNode>(key, value);
         cache[key] = node;
         if (head == nullptr) {
             head = node;
@@ -70,7 +70,7 @@ void LRUCache::put(int key, PageFrame *value) {
     }
 }
 
-void LRUCache::remove(CacheNode* node) {
+void LRUCache::remove(shared_ptr<CacheNode> node) {
     if (node == head) {
         head = node->next;
     } else {
@@ -83,10 +83,10 @@ void LRUCache::remove(CacheNode* node) {
     }
 //    cout << "LRU evicting page number " << node->value->get_page_number() << endl;
 //    this->print_list();
-    delete node;
+    // delete node;
 }
 
-void LRUCache::moveToFront(CacheNode* node) {
+void LRUCache::moveToFront(shared_ptr<CacheNode> node) {
     if (node == head) {
         return;
     }
@@ -103,7 +103,7 @@ void LRUCache::moveToFront(CacheNode* node) {
 }
 
 void LRUCache::print_list() {
-    CacheNode* node = head;
+    shared_ptr<CacheNode> node = head;
     cout << "lru cache: ";
     while (node != nullptr) {
         cout << node->value->get_page_number() << " ";
@@ -112,7 +112,7 @@ void LRUCache::print_list() {
     cout << endl;
 }
 
-LRUCache::CacheNode *LRUCache::get(int key) {
+shared_ptr<LRUCache::CacheNode> LRUCache::get(int key) {
     return nullptr;
 }
 

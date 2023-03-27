@@ -8,20 +8,21 @@
 #include "bp_pageframe.h"
 #include "bp_linkedlist.h"
 #include <vector>
+#include <memory>
 
 class ClockBitmap {
 public:
     ClockBitmap(int capacity);
-    PageFrame * get(int key);
-    PageFrame *put(int key, PageFrame *value);
+    shared_ptr<PageFrame>  get(int key);
+    shared_ptr<PageFrame> put(int key, shared_ptr<PageFrame> value);
     void set_capacity(int val);
-    void use_item(PageFrame *pageFrame);
-    vector<PageFrame*> evict_pages();
+    void use_item(shared_ptr<PageFrame> pageFrame);
+    vector<shared_ptr<PageFrame>> evict_pages();
     void print_bitmap();
 
 private:
     int capacity;
-    vector<PageFrame*> bitmap;
+    vector<shared_ptr<PageFrame>> bitmap;
     int clock_hand = 0;
 };
 
