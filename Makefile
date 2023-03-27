@@ -12,7 +12,7 @@ phase1_tests: $(OBJFILES) phase1_tests.o
 	$(CC) $(CFLAGS) -o phase1_tests $(OBJFILES) phase1_tests.o
 	./phase1_tests
 
-phase2_tests: $(OBJFILES) phase2_tests.o
+phase2_tests: clean $(OBJFILES) phase2_tests.o
 	$(CC) $(CFLAGS) -o phase2_tests $(OBJFILES) phase2_tests.o
 	./phase2_tests
 
@@ -32,3 +32,5 @@ all_tests: clean phase1_tests clean phase2_tests clean phase2_clock clean phase2
 clean:
 	rm -f *.o experiments/*.o main experiments/*_experiments *_tests *.bin
 
+valgrind: clean phase2_tests
+	valgrind --leak-check=full --show-leak-kinds=all --track-origins=yes --verbose ./phase2_tests

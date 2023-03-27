@@ -15,7 +15,7 @@ PageFrame::PageFrame(pair<db_key_t, db_val_t> *page_content, int num_pairs_in_pa
     this->num_pairs_in_page = num_pairs_in_page;
     this->next = nullptr;
     this->clock_bit = 0;
-    this->size = 4096;
+
 }
 
 int PageFrame::get_reference_bit() {

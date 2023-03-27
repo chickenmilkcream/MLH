@@ -38,6 +38,7 @@ PageFrame * LRUCache::evict_one_page_item() {
     }
     int key = tail->key;
     PageFrame *pageFrame = tail->value;
+    // cout << "evicting page with key: " << key << endl;
     cache.erase(key);
     remove(tail);
     return pageFrame;
