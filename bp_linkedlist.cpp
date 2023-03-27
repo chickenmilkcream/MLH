@@ -93,6 +93,15 @@ void BPLinkedList::remove_page_frame(shared_ptr<PageFrame> page_frame) {
                 prev->next = current->next;
             }
             // free(current);
+
+            // // free the memory when you're done
+            // for (int i = 0; i < current->num_pairs_in_page; ++i)
+            // {
+            //     current->page_content[i].~pair<db_key_t, db_val_t>();
+            // }
+            // delete current->page_content;
+
+            // free(current);
             return;
         }
         prev = current;
