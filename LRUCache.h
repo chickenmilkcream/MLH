@@ -17,14 +17,14 @@ public:
     void print_list();
     struct CacheNode {
         int key;
-        shared_ptr<CacheNode> prev;
+        weak_ptr<CacheNode> prev;
         shared_ptr<CacheNode> next;
         shared_ptr<PageFrame> value;
-        CacheNode(int k, shared_ptr<PageFrame> v) : key(k), prev(nullptr), next(nullptr), value(v){}
+        CacheNode(int k, shared_ptr<PageFrame> v) : key(k), prev(), next(nullptr), value(v){}
     };
     shared_ptr<CacheNode>get(int key);
     shared_ptr<CacheNode> head;
-    shared_ptr<CacheNode> tail;
+    weak_ptr<CacheNode> tail;
     void mark_item_as_used(shared_ptr<PageFrame> pageFrame);
 
     shared_ptr<PageFrame> evict_one_page_item();

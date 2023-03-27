@@ -13,7 +13,7 @@
 class ClockBitmap {
 public:
     ClockBitmap(int capacity);
-    shared_ptr<PageFrame>  get(int key);
+    shared_ptr<PageFrame> get(int key);
     shared_ptr<PageFrame> put(int key, shared_ptr<PageFrame> value);
     void set_capacity(int val);
     void use_item(shared_ptr<PageFrame> pageFrame);

@@ -7,7 +7,7 @@
 //using namespace std;
 
 
-LRUCache::LRUCache() :head(nullptr), tail(nullptr) {}
+LRUCache::LRUCache() :head(nullptr), tail() {}
 
 void LRUCache::mark_item_as_used(shared_ptr<PageFrame> pageFrame)
 {
@@ -33,14 +33,15 @@ void LRUCache::mark_item_as_used(shared_ptr<PageFrame> pageFrame)
 
 
 shared_ptr<PageFrame> LRUCache::evict_one_page_item() {
-    if (tail == nullptr) {
+    shared_ptr<CacheNode> shared_tail = tail.lock();
+    if (!shared_tail) {
         return nullptr;
     }
-    int key = tail->key;
-    shared_ptr<PageFrame> pageFrame = tail->value;
+    int key = shared_tail->key;
+    shared_ptr<PageFrame> pageFrame = shared_tail->value;
     // cout << "evicting page with key: " << key << endl;
     cache.erase(key);
-    remove(tail);
+    remove(shared_tail);
     return pageFrame;
 }
 
@@ -71,12 +72,14 @@ void LRUCache::put(int key, shared_ptr<PageFrame> value) {
 }
 
 void LRUCache::remove(shared_ptr<CacheNode> node) {
+    shared_ptr<CacheNode> shared_tail = tail.lock();
+    shared_ptr<CacheNode> shared_prev = node->prev.lock();
     if (node == head) {
         head = node->next;
     } else {
-        node->prev->next = node->next;
+        shared_prev->next = node->next;
     }
-    if (node == tail) {
+    if (node == shared_tail) {
         tail = node->prev;
     } else {
         node->next->prev = node->prev;
@@ -87,16 +90,18 @@ void LRUCache::remove(shared_ptr<CacheNode> node) {
 }
 
 void LRUCache::moveToFront(shared_ptr<CacheNode> node) {
+    shared_ptr<CacheNode> shared_tail = tail.lock();
+    shared_ptr<CacheNode> shared_prev = node->prev.lock();
     if (node == head) {
         return;
     }
-    if (node == tail) {
+    if (node == shared_tail) {
         tail = node->prev;
     } else {
         node->next->prev = node->prev;
     }
-    node->prev->next = node->next;
-    node->prev = nullptr;
+    shared_prev->next = node->next;
+    node->prev.reset();
     node->next = head;
     head->prev = node;
     head = node;
