@@ -40,3 +40,4 @@ ax.legend()
 
 # Display the plot
 plt.savefig('experiments/phase2_plot.png')
+plt.show()
