@@ -14,7 +14,7 @@ int main(int argc, char *argv[]) {
         20000,
         30000,
         40000,
-    }; // TODO: sometimes this segfaults when using the buffer pool
+    }; // TODO: is there a segfault?
 
     // N = 10000 (binary search): 20.4204
     // N = 10000 (b-tree search): 18.2818
@@ -27,7 +27,7 @@ int main(int argc, char *argv[]) {
 
     for (size_t n : nlist) {
         for (search_alg alg : algs ) {
-            KeyValueStore db = KeyValueStore(n * DB_PAIR_SIZE / 5, "clock", 8, 4096, 8);
+            KeyValueStore db = KeyValueStore(n * DB_PAIR_SIZE / 5, "LRU", 8, 4096, 8);
 
             // generate uniformly random key-value pairs
             random_device rand_dev;
