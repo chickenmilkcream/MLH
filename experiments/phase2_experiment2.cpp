@@ -18,14 +18,16 @@ int main(int argc, char *argv[]) {
         50000
     };
 
-    // N = 10000 (binary search): 20.4204
-    // N = 10000 (b-tree search): 18.2818
-    // N = 20000 (binary search): 48.9458
-    // N = 20000 (b-tree search): 36.9872
-    // N = 30000 (binary search): 82.8542
-    // N = 30000 (b-tree search): 57.0279
-    // N = 40000 (binary search): 108.874
-    // N = 40000 (b-tree search): 79.048
+    // N = 10000 (binary search): 73.4888
+    // N = 10000 (b-tree search): 64.7316
+    // N = 20000 (binary search): 107.432
+    // N = 20000 (b-tree search): 85.0067
+    // N = 30000 (binary search): 123.531
+    // N = 30000 (b-tree search): 98.3139
+    // N = 40000 (binary search): 148.954
+    // N = 40000 (b-tree search): 117.996
+    // N = 50000 (binary search): 154.598
+    // N = 50000 (b-tree search): 125.24
 
     for (size_t n : nlist) {
         for (search_alg alg : algs) {
