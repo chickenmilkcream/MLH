@@ -38,7 +38,7 @@ all_tests: clean phase1_tests clean phase2_tests clean phase2_clock clean phase2
 	$(CC) $(CFLAGS) -c $<
 
 clean:
-	rm -f *.o experiments/*.o main experiments/*_experiments *_tests *.bin
+	rm -f *.o experiments/*.o main experiments/*_experiments *_tests *.bin experiments/*_experiment2
 
 valgrind: clean phase2_tests
 	valgrind --leak-check=full --show-leak-kinds=all --track-origins=yes --verbose ./phase2_tests
