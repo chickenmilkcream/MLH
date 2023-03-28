@@ -1,5 +1,6 @@
 #include "../kv_store.h"
 
+#include <iostream>
 #include <algorithm>
 #include <chrono>
 #include <random>
@@ -14,7 +15,8 @@ int main(int argc, char *argv[]) {
         20000,
         30000,
         40000,
-    }; // TODO: is there a segfault?
+        50000
+    };
 
     // N = 10000 (binary search): 20.4204
     // N = 10000 (b-tree search): 18.2818
@@ -26,14 +28,13 @@ int main(int argc, char *argv[]) {
     // N = 40000 (b-tree search): 79.048
 
     for (size_t n : nlist) {
-        for (search_alg alg : algs ) {
+        for (search_alg alg : algs) {
             KeyValueStore db = KeyValueStore(n * DB_PAIR_SIZE / 5, "LRU", 8, 4096, 8);
 
             // generate uniformly random key-value pairs
-            random_device rand_dev;
-            mt19937 gen(rand_dev());
-            uniform_int_distribution<db_key_t> pdist(DB_KEY_MIN, DB_KEY_MAX);
-            uniform_int_distribution<size_t> gdist(0, n - 1);
+            mt19937 gen(443); // seed with 443
+            uniform_int_distribution<db_key_t> pdist(DB_KEY_MIN, DB_KEY_MAX); // distribution for putting key-value pairs
+            uniform_int_distribution<size_t> gdist(0, n - 1); // distribution for getting keys
 
             unordered_map<db_key_t, db_val_t> pairs;
             while (pairs.size() < n) {
@@ -54,12 +55,20 @@ int main(int argc, char *argv[]) {
 
             auto start = chrono::high_resolution_clock::now();
             // get key-value pairs from database
-            for (size_t i = 0; i < n; i++) {
+            for (size_t i = 0; i < 10000; i++) {
                 size_t j = gdist(gen);
                 db_key_t key = keys[j];
                 db.get(key, alg);
             }
-            // TODO: do some scans too
+            
+            // scan key-value pairs from database
+            for (size_t i = 0; i < 5000; i++) {
+                size_t j = gdist(gen);
+                size_t k = gdist(gen);
+                db_key_t min_key = min(keys[j], keys[k]);
+                db_key_t max_key = max(keys[j], keys[k]);
+                db.scan(min_key, max_key, alg);
+            }
             auto stop = chrono::high_resolution_clock::now();
 
             auto duration = chrono::duration_cast<std::chrono::microseconds>(stop - start);

@@ -54,12 +54,12 @@ void KeyValueStore::bpread(string filename, int fd, void *buf, off_t fp) {
     // aligned_pread(fd, buf, PAGE_SIZE, fp);
 
     size_t b = PAGE_SIZE / DB_PAIR_SIZE; // number of key-value pairs per page
-    try  {
-         void *page = this->buffer_pool.get_page(filename, fp / PAGE_SIZE)->page_content;
-         memcpy(buf, page, PAGE_SIZE);
+    try {
+        void *page = this->buffer_pool.get_page(filename, fp / PAGE_SIZE)->page_content;
+        memcpy(buf, page, PAGE_SIZE);
     } catch (out_of_range &e) {
-         aligned_pread(fd, buf, PAGE_SIZE, fp);
-         this->buffer_pool.insert_page(buf, b, filename, fp / PAGE_SIZE);
+        aligned_pread(fd, buf, PAGE_SIZE, fp);
+        this->buffer_pool.insert_page(buf, b, filename, fp / PAGE_SIZE);
     }
 }
 
