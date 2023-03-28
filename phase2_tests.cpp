@@ -211,6 +211,6 @@ int main(int argc, char *argv[])
     }
 
     db.close_db();
-    cout << "current_bp_size " << db.buffer_pool.current_bp_size << endl;
+    assert(db.buffer_pool.current_bp_size == 0);
     /* ==================== B-TREE GET, PUT, SCAN TESTS ==================== */
 }

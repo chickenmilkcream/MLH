@@ -137,7 +137,7 @@ void BPDirectory::insert_page(void *page_content, int num_pairs_in_page, string 
         // new (&malloc_page[i]) pair<db_key_t, db_val_t>(key, val);
     // }
 //    cout << "adding page frame" << endl;
-    shared_ptr<PageFrame> newNode = this->directory[directory_key]->add_page_frame(malloc_page, num_pairs_in_page, sst_name, page_number);
+    shared_ptr<PageFrame> newNode = this->directory[directory_key]->add_page_frame(malloc_page, num_pairs_in_page, sst_name, page_number);    
     this->current_num_items += 1;
     this->page_id += 1;
     newNode->set_id(this->page_id);
@@ -342,7 +342,8 @@ void BPDirectory::free_all_pages()
 {
     for (auto prefix = this->directory.begin(); prefix != this->directory.end(); ++prefix)
     {
-        prefix->second->free_all_pages();
+        int num_pages_freed = prefix->second->free_all_pages();
+        this->current_bp_size -= num_pages_freed * sizeof(PageFrame);
     }
 }
 
