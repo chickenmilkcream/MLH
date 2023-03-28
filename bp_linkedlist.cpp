@@ -67,7 +67,6 @@ void BPLinkedList::print_list()
 
 void BPLinkedList::free_all_pages()
 {
-    head = nullptr;
     shared_ptr<PageFrame> current = head;
     while (current != nullptr)
     {

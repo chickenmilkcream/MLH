@@ -14,7 +14,7 @@ int main(int argc, char *argv[])
 {
     string sst_name = "sst_1.bin";
     int page_number = 1;
-    string eviction_policy = "LRU";
+    string eviction_policy = "clock";
     int initial_num_bits = 2;
     int maximum_bp_size = 1000;
     int maximum_num_items_threshold = 10;
@@ -211,5 +211,6 @@ int main(int argc, char *argv[])
     }
 
     db.close_db();
+    cout << "current_bp_size " << db.buffer_pool.current_bp_size << endl;
     /* ==================== B-TREE GET, PUT, SCAN TESTS ==================== */
 }
