@@ -73,7 +73,6 @@ void KeyValueStore::open_db(string db)
 void KeyValueStore::close_db()
 {
     this->serialize();
-    cout << "cereal-ized" << endl;
     this->buffer_pool.free_all_pages();
 }
 

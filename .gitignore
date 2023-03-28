@@ -6,3 +6,4 @@ main
 *_tests
 *.bin
 *.exe
+.nfs*

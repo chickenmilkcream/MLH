@@ -17,7 +17,7 @@ public:
     shared_ptr<PageFrame> find_page_frame(string sst_name, int page_number);
     void remove_page_frame(shared_ptr<PageFrame> page_frame);
     void print_list();
-    void free_all_pages();
+    int free_all_pages();
     int clock_cycle_count;
 };
 

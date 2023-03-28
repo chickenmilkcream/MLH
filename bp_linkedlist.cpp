@@ -65,11 +65,13 @@ void BPLinkedList::print_list()
     // std::cout << std::endl;
 }
 
-void BPLinkedList::free_all_pages()
+int BPLinkedList::free_all_pages()
 {
+    int num_pages_freed = 0;
     shared_ptr<PageFrame> current = head;
     while (current != nullptr)
     {
+        num_pages_freed ++;
         shared_ptr<PageFrame> next = current->next;
         free(current->page_content);
         // for (int i = 0; i < current->num_pairs_in_page; ++i)
@@ -79,6 +81,7 @@ void BPLinkedList::free_all_pages()
         // free(current);
         current = next;
     }
+    return num_pages_freed;
 }
 
 void BPLinkedList::remove_page_frame(shared_ptr<PageFrame> page_frame) {
