@@ -73,6 +73,7 @@ void KeyValueStore::open_db(string db)
 void KeyValueStore::close_db()
 {
     this->serialize();
+    cout << "cereal-ized" << endl;
     this->buffer_pool.free_all_pages();
 }
 
@@ -415,10 +416,14 @@ void KeyValueStore::read_from_file(const char *filename)
 
 void KeyValueStore::serialize()
 {
-    vector<pair<db_key_t, db_val_t> > pairs = this->memtable.scan(DB_KEY_MIN, DB_KEY_MAX);
-    this->memtable = Memtable(this->memtable_size);
-
     size_t b = PAGE_SIZE / DB_PAIR_SIZE; // number of key-value pairs per page
+
+    vector<pair<db_key_t, db_val_t> > pairs = this->memtable.scan(DB_KEY_MIN, DB_KEY_MAX);
+    if (pairs.size() == 0) {
+        return;
+    }
+
+    this->memtable = Memtable(this->memtable_size);
 
     size_t height = ceil(log((double) pairs.size() / b) / log(b + 1)) + 1;
 

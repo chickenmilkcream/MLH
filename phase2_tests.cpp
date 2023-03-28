@@ -209,5 +209,7 @@ int main(int argc, char *argv[])
         assert(a == b);
         cout << "Passed scan operation for range [" << min_key << ", " << max_key  << "]." << endl;
     }
+
+    db.close_db();
     /* ==================== B-TREE GET, PUT, SCAN TESTS ==================== */
 }
