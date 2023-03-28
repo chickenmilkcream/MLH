@@ -40,7 +40,7 @@ BPDirectory::BPDirectory(string eviction_policy, int initial_num_bits, int maxim
     this->update_directory_keys();
     this->clock_hand_key = 0;
     this->clock_hand_location = this->directory[this->directory_keys[0]]->head;
-    this->clock_cycle_count = 0;
+    this->clock_cycle_count = 1;
 }
 
 
@@ -60,6 +60,7 @@ shared_ptr<PageFrame> BPDirectory::clock_find_victim() {
         if (potential_victim == nullptr) {
             continue;
         }
+//        cout << "found potential victim " << potential_victim->page_number << " bit " << potential_victim->clock_bit << endl;
 
         // cout<< "clock cycle count " << this->clock_cycle_count << " " << this->directory[this->directory_keys[this->clock_hand_key]]->clock_cycle_count << endl;
         if (this->directory[this->directory_keys[this->clock_hand_key]]->clock_cycle_count < this->clock_cycle_count) {
@@ -70,10 +71,12 @@ shared_ptr<PageFrame> BPDirectory::clock_find_victim() {
                 // cout << "Found victim page number " << potential_victim->page_number << endl;
                 return potential_victim;
             } else {
+
                 potential_victim->set_reference_bit(0);
             }
-            this->directory[this->directory_keys[this->clock_hand_key]]->clock_cycle_count = this->clock_cycle_count;
-
+            if (this->clock_hand_location->next == nullptr) {
+                this->directory[this->directory_keys[this->clock_hand_key]]->clock_cycle_count = this->clock_cycle_count;
+            }
         }
     }
 }
@@ -181,6 +184,7 @@ void BPDirectory::evict_until_under_max_bp_size() {
             this->current_num_items--;
             this->current_bp_size -= PAGE_SIZE;
             // cout << "AMY current bp size evict_until_under_max_bp_size " << this->current_bp_size << endl;
+//            cout << "evicting page number " << pageToEvict->page_number << " from sst " << pageToEvict->sst_name << endl;
             this->evict_page(pageToEvict);
         }
     }

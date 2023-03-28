@@ -26,7 +26,7 @@ int main(int argc, char *argv[]) {
     std::cout << "--------------------------------------------------------------- \n";
 
     BPDirectory bpd = BPDirectory(eviction_policy, initial_num_bits, maximum_bp_size, maximum_num_items_threshold);
-    bpd.set_maximum_bp_size(16*sizeof(PageFrame));
+    bpd.set_maximum_bp_size(16*4096);
 
 
     assert(bpd.directory.size() == initial_num_bits ^ 2);
@@ -118,7 +118,7 @@ int main(int argc, char *argv[]) {
     }
 
     std::cout << "bp size: " << bpd.current_bp_size << "\n";
-    assert(bpd.current_bp_size == 16*sizeof(PageFrame));
+    assert(bpd.current_bp_size == 16*4096);
 
     std::cout << "test getting page from middle of cache \n";
     std::cout << "before getting page 16-20 \n";
@@ -130,18 +130,18 @@ int main(int argc, char *argv[]) {
     bpd.lru_cache->print_list();
 
     std::cout << "testing increasing directory \n";
-    assert(bpd.current_bp_size == 16 * sizeof(PageFrame));
-    bpd.set_maximum_bp_size(32 * sizeof(PageFrame));
-    assert(bpd.maximum_bp_size == 32 * sizeof(PageFrame));
-    assert(bpd.current_bp_size == 16 * sizeof(PageFrame));
+    assert(bpd.current_bp_size == 16 * 4096);
+    bpd.set_maximum_bp_size(32 * 4096);
+    assert(bpd.maximum_bp_size == 32 * 4096);
+    assert(bpd.current_bp_size == 16 * 4096);
 
     std::cout << "should expect to see no changes. new lru cache state: \n";
     bpd.lru_cache->print_list();
 
     std::cout << "testing shrink directory \n";
-    assert(bpd.current_bp_size == 16*sizeof(PageFrame));
-    bpd.set_maximum_bp_size(8*sizeof(PageFrame));
-    assert(bpd.current_bp_size == 8*sizeof(PageFrame));
+    assert(bpd.current_bp_size == 16*4096);
+    bpd.set_maximum_bp_size(8*4096);
+    assert(bpd.current_bp_size == 8*4096);
 
     std::cout << "evicted half of directory. new lru cache state: \n";
     bpd.lru_cache->print_list();

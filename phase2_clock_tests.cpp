@@ -27,7 +27,7 @@ int main(int argc, char *argv[]) {
     std::cout << "--------------------------------------------------------------- \n";
 
     BPDirectory bpd = BPDirectory(eviction_policy, initial_num_bits, maximum_bp_size, maximum_num_items_threshold);
-    bpd.set_maximum_bp_size(16*sizeof(PageFrame));
+    bpd.set_maximum_bp_size(16*4096);
 
 
     assert(bpd.directory.size() == initial_num_bits ^ 2);
@@ -92,22 +92,49 @@ int main(int argc, char *argv[]) {
 
     // insert 3 more pages to test eviction
     // now page 1 should get evicted but not 2-4
-    std::cout << "inserting 3 more pages to test eviction \n";
-//    bpd.print_directory();
+    bpd.print_directory();
+    page_number++;
     bpd.insert_page(&page_content[16], num_pairs_in_page, sst_name, page_number);
 
     std::cout << "after first eviction \n";
-//    bpd.print_directory();
+    bpd.print_directory();
     page_number++;
     bpd.insert_page(&page_content[17], num_pairs_in_page, sst_name, page_number);
 
-    // for (auto i = 16; i != 19; i++) {
-    //     page_number++;
-    //     cout << "inserting page " << page_number << endl;
+    try {
+        bpd.get_page(sst_name, 15);
+        bpd.get_page(sst_name, 16);
 
-    //     bpd.insert_page(&page_content[i], num_pairs_in_page, sst_name, page_number);
-    // }
+        assert(false);
+    } catch (const std::exception& e) {
+        std::cout << "page 15, 16 evicted \n";
+    }
+
+    bpd.print_directory();
+
+    std::cout << "big oof \n";
+
+    bpd.get_page(sst_name, 9);
+    bpd.get_page(sst_name, 11);
+
+    for (auto i = 16; i != 19; i++) {
+         page_number++;
+         cout << "inserting page " << page_number << endl;
+
+         bpd.insert_page(&page_content[i], num_pairs_in_page, sst_name, page_number);
+     }
+
+
+    try {
+        bpd.get_page(sst_name, 1);
+        bpd.get_page(sst_name, 12);
+        assert(false);
+    } catch (const std::exception& e) {
+        std::cout << "page 1 evicted \n";
+    }
+
     // // TODO test clock eviction
+    std::cout << "passed clock eviction tests \n";
 
 
 //    cout << bpd.get_page(sst_name, 1) << endl;
@@ -126,7 +153,7 @@ int main(int argc, char *argv[]) {
 //    }
 //
 //    std::cout << "bp size: " << bpd.current_bp_size << "\n";
-//    assert(bpd.current_bp_size == 16*sizeof(PageFrame));
+//    assert(bpd.current_bp_size == 16*4096);
 //
 //    std::cout << "test getting page from middle of cache \n";
 //    std::cout << "before getting page 16-20 \n";
@@ -137,10 +164,10 @@ int main(int argc, char *argv[]) {
 //    std::cout << "after getting page 16-20 \n";
 //    bpd.lru_cache->print_list();
 //    std::cout << "testing shrink directory \n";
-//    assert(bpd.current_bp_size == 16*sizeof(PageFrame));
+//    assert(bpd.current_bp_size == 16*4096);
 //
-//    bpd.set_maximum_bp_size(8*sizeof(PageFrame));
-//    assert(bpd.current_bp_size == 8*sizeof(PageFrame));
+//    bpd.set_maximum_bp_size(8*4096);
+//    assert(bpd.current_bp_size == 8*4096);
 //    std::cout << "evicted half of directory. new lru cache state: \n";
 //    bpd.lru_cache->print_list();
 //
