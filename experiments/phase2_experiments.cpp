@@ -14,6 +14,7 @@
 #include <unordered_map>
 #include <vector>
 
+
 int main() {
     int arr[] = {
         4096  * 1,
@@ -103,6 +104,10 @@ int main() {
         clock_workload_1_file << max_bp_sizes[i] << "," << clock_runtimes_workload_1[i] << "\n";
     }
     clock_workload_1_file.close();
+
+    // plot results
+    system("python3 experiments/phase2_plot.py");
+
 
     return 0;
 }
