@@ -131,7 +131,7 @@ int main(int argc, char *argv[])
      * 4096 / 8 = 512 keys (for non-terminal nodes)
      */
     size_t n = 256 + 1; // height 2
-    // size_t n = 256 * (256 + 1) + 1; // height 3
+//     size_t n = 256 * (256 + 1) + 1; // height 3
     // size_t n = 256 * (256 * (256 + 1) + 1) + 1; // height 4
 
     // KeyValueStore db = KeyValueStore(n * DB_PAIR_SIZE + 1, eviction_policy, initial_num_bits, maximum_bp_size, maximum_num_items_threshold); // writes zero SSTs (all in memory)

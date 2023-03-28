@@ -14,7 +14,7 @@ PageFrame::PageFrame(void *page_content, int num_pairs_in_page, string sst_name,
     this->page_number = page_number;
     this->num_pairs_in_page = num_pairs_in_page;
     this->next = nullptr;
-    this->clock_bit = 0;
+    this->clock_bit = 1;
 
 }
 
