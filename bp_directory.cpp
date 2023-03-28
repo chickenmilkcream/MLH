@@ -122,8 +122,8 @@ void BPDirectory::insert_page(void *page_content, int num_pairs_in_page, string 
 {
     string source = sst_name + to_string(page_number);
     string directory_key = this->hash_string(source);
-    this->current_bp_size += sizeof(PageFrame);
-    cout << "AMY current bp size insert_page " << this->current_bp_size << endl;
+    this->current_bp_size += PAGE_SIZE;
+    // cout << "AMY current bp size insert_page " << this->current_bp_size << endl;
 
 //    cout << "mallocing page" << endl;
     // Malloc memory for the page
@@ -179,8 +179,8 @@ void BPDirectory::evict_until_under_max_bp_size() {
         }
         if (pageToEvict != nullptr) {
             this->current_num_items--;
-            this->current_bp_size -= sizeof(PageFrame);
-            cout << "AMY current bp size evict_until_under_max_bp_size " << this->current_bp_size << endl;
+            this->current_bp_size -= PAGE_SIZE;
+            // cout << "AMY current bp size evict_until_under_max_bp_size " << this->current_bp_size << endl;
             this->evict_page(pageToEvict);
         }
     }
@@ -332,8 +332,8 @@ void BPDirectory::free_all_pages()
     for (auto prefix = this->directory.begin(); prefix != this->directory.end(); ++prefix)
     {
         int num_pages_freed = prefix->second->free_all_pages();
-        this->current_bp_size -= num_pages_freed * sizeof(PageFrame);
-        cout << "AMY current bp size free_all_pages " << this->current_bp_size << endl;
+        this->current_bp_size -= num_pages_freed * PAGE_SIZE;
+        // cout << "AMY current bp size free_all_pages " << this->current_bp_size << endl;
     }
 }
 
