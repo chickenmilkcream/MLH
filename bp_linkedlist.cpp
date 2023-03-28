@@ -74,7 +74,6 @@ int BPLinkedList::free_all_pages()
         num_pages_freed ++;
         shared_ptr<PageFrame> next = current->next;
         free(current->page_content);
-        cout << "__free1" << endl;
         // for (int i = 0; i < current->num_pairs_in_page; ++i)
         // {
         //     current->page_content[i].~pair<db_key_t, db_val_t>();
@@ -89,11 +88,7 @@ void BPLinkedList::remove_page_frame(shared_ptr<PageFrame> page_frame) {
     shared_ptr<PageFrame> current = head;
     shared_ptr<PageFrame> prev = nullptr;
 
-    cout << "__________" << current << endl;
-
     while (current != nullptr) {
-        cout << "current->page_number == page_frame->page_number" << current->page_number << " "<< page_frame->page_number << endl;
-
         if (current->page_number == page_frame->page_number) {
             if (prev == nullptr) {
                 head = current->next;
@@ -103,7 +98,6 @@ void BPLinkedList::remove_page_frame(shared_ptr<PageFrame> page_frame) {
             // free(current);
 
             free(current->page_content);
-            cout << "__free2" << endl;
             // // free the memory when you're done
             // for (int i = 0; i < current->num_pairs_in_page; ++i)
             // {

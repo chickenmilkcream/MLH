@@ -8,6 +8,10 @@ phase1_experiments: $(OBJFILES) experiments/phase1_experiments.o
 	$(CC) $(CFLAGS) -o experiments/phase1_experiments $(OBJFILES) experiments/phase1_experiments.o
 	./experiments/phase1_experiments
 
+phase2_experiment2: $(OBJFILES) experiments/phase2_experiment2.o
+	$(CC) $(CFLAGS) -o experiments/phase2_experiment2 $(OBJFILES) experiments/phase2_experiment2.o
+	./experiments/phase2_experiment2
+
 phase1_tests: $(OBJFILES) phase1_tests.o
 	$(CC) $(CFLAGS) -o phase1_tests $(OBJFILES) phase1_tests.o
 	./phase1_tests

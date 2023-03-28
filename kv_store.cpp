@@ -55,7 +55,6 @@ void KeyValueStore::bpread(string filename, int fd, void *buf, off_t fp) {
 
     size_t b = PAGE_SIZE / DB_PAIR_SIZE; // number of key-value pairs per page
     try  {
-        // TODO: can page_content be binary?
          void *page = this->buffer_pool.get_page(filename, fp / PAGE_SIZE)->page_content;
          memcpy(buf, page, PAGE_SIZE);
     } catch (out_of_range &e) {
