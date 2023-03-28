@@ -74,11 +74,6 @@ int BPLinkedList::free_all_pages()
         num_pages_freed ++;
         shared_ptr<PageFrame> next = current->next;
         free(current->page_content);
-        // for (int i = 0; i < current->num_pairs_in_page; ++i)
-        // {
-        //     current->page_content[i].~pair<db_key_t, db_val_t>();
-        // }
-        // free(current);
         current = next;
     }
     return num_pages_freed;
@@ -95,17 +90,8 @@ void BPLinkedList::remove_page_frame(shared_ptr<PageFrame> page_frame) {
             } else {
                 prev->next = current->next;
             }
-            // free(current);
 
             free(current->page_content);
-            // // free the memory when you're done
-            // for (int i = 0; i < current->num_pairs_in_page; ++i)
-            // {
-            //     current->page_content[i].~pair<db_key_t, db_val_t>();
-            // }
-            // delete current->page_content;
-
-            // free(current);
             return;
         }
         prev = current;

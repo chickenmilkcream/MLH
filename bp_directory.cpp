@@ -122,19 +122,14 @@ void BPDirectory::insert_page(void *page_content, int num_pairs_in_page, string 
 {
     string source = sst_name + to_string(page_number);
     string directory_key = this->hash_string(source);
-    this->current_bp_size += sizeof(PageFrame);
+    this->current_bp_size += PAGE_SIZE;
+    // cout << "AMY current bp size insert_page " << this->current_bp_size << endl;
 
 //    cout << "mallocing page" << endl;
     // Malloc memory for the page
     void *malloc_page = malloc(PAGE_SIZE);
     memcpy(malloc_page, page_content, PAGE_SIZE);
-    // for (int i = 0; i < num_pairs_in_page; ++i)
-    // {
-    //     db_key_t key = page_content[i].first;
-    //     db_val_t val = page_content[i].second;
-    //     malloc_page[i] = *(new pair<db_key_t, db_val_t>(key, val));
-        // new (&malloc_page[i]) pair<db_key_t, db_val_t>(key, val);
-    // }
+
 //    cout << "adding page frame" << endl;
     shared_ptr<PageFrame> newNode = this->directory[directory_key]->add_page_frame(malloc_page, num_pairs_in_page, sst_name, page_number);    
     this->current_num_items += 1;
@@ -184,11 +179,10 @@ void BPDirectory::evict_until_under_max_bp_size() {
         }
         if (pageToEvict != nullptr) {
             this->current_num_items--;
-            this->current_bp_size -= sizeof(PageFrame);
-            // cout << "Evicting page " << pageToEvict->page_number << " from SST " << pageToEvict->sst_name << endl;
+            this->current_bp_size -= PAGE_SIZE;
+            // cout << "AMY current bp size evict_until_under_max_bp_size " << this->current_bp_size << endl;
             this->evict_page(pageToEvict);
         }
-        // cout << "curr size: " << this->current_bp_size << " max size: " << this->maximum_bp_size << endl;
     }
 }
 
@@ -241,7 +235,6 @@ void BPDirectory::evict_page(shared_ptr<PageFrame> pageFrame) {
     string source = pageFrame->sst_name + to_string(pageFrame->page_number);
     string directory_key = this->hash_string(source);
     this->directory[directory_key]->remove_page_frame(pageFrame);
-    //free(pageFrame);
 }
 
 vector<string> BPDirectory::generate_binary_strings(int n, string str)
@@ -339,7 +332,8 @@ void BPDirectory::free_all_pages()
     for (auto prefix = this->directory.begin(); prefix != this->directory.end(); ++prefix)
     {
         int num_pages_freed = prefix->second->free_all_pages();
-        this->current_bp_size -= num_pages_freed * sizeof(PageFrame);
+        this->current_bp_size -= num_pages_freed * PAGE_SIZE;
+        // cout << "AMY current bp size free_all_pages " << this->current_bp_size << endl;
     }
 }
 
