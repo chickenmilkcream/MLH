@@ -23,6 +23,7 @@ int PageFrame::get_reference_bit() {
 }
 
 void PageFrame::set_reference_bit(int bit) {
+//    cout << "setting reference bit of page number " << page_number << " to " << bit << endl;
     this->clock_bit = bit;
 }
 

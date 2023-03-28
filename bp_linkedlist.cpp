@@ -47,22 +47,13 @@ shared_ptr<PageFrame> BPLinkedList::find_page_frame(string sst_name, int page_nu
 
 void BPLinkedList::print_list()
 {
-    // shared_ptr<PageFrame> current = head;
-    // std::cout << "The linkedlist: " << std::endl;
-    // std::cout << current << std::endl;
-
-    // while (current != nullptr)
-    // {
-    //     cout << "--- start page" << endl;
-    //     for (int i = 0; i < current->num_pairs_in_page; i++)
-    //     {
-    //         std::cout << "Key: " << current->page_content[i].first << " Value: " << current->page_content[i].second << " Clock Reference bit: " << current->get_reference_bit() << std::endl;
-    //     }
-    //     cout << "--- end page" << endl;
-
-    //     current = current->next;
-    // }
-    // std::cout << std::endl;
+    shared_ptr<PageFrame> current = head;
+    while (current != nullptr)
+    {
+        cout << current->page_number << ": " << current->clock_bit << ", ";
+        current = current->next;
+    }
+    cout << endl;
 }
 
 int BPLinkedList::free_all_pages()
