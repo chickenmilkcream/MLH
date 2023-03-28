@@ -268,8 +268,8 @@ vector<pair<db_key_t, db_val_t> > KeyValueStore::scan(db_key_t min_key, db_key_t
 
         // scan until key is greater than max_key or EOF is reached
         size_t k = j;
-        while (((pair<db_key_t, db_val_t> *) buf)[k].first <= max_key &&
-               k < sizes[height - 1] - (fp - PAGE_SIZE - start) / DB_PAIR_SIZE) {
+        while (k < min(b, sizes[height - 1] - (fp - PAGE_SIZE - start) / DB_PAIR_SIZE) &&
+               ((pair<db_key_t, db_val_t> *) buf)[k].first <= max_key) {
             pairs.push_back(((pair<db_key_t, db_val_t> *) buf)[k]);
             k++;
             if (k == b) {
