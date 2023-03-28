@@ -6,12 +6,28 @@
 #include "../kv_store.h"
 #include <random>
 
+
+#include <iostream>
+#include <algorithm>
+#include <cassert>
+#include <unistd.h>
+#include <unordered_map>
+#include <vector>
+
 int main() {
     int arr[] = {
-        2048,
-        4096,
-        6144,
-        8192
+        4096 * 1,
+        4096  * 2,
+        4096  * 3,
+        4096  * 4,
+        4096  * 5,
+        4096  * 6,
+        4096  * 7,
+        4096  * 8,
+        4096  * 9,
+        4096  * 10,
+        4096  * 11
+
     };
     std::vector<int> max_bp_sizes(arr, arr + sizeof(arr) / sizeof(int));
     std::vector<double> lru_runtimes_workload_1;
@@ -19,9 +35,11 @@ int main() {
     std::vector<double> clock_runtimes_workload_1;
     // std::vector<double> clock_runtimes_workload_2;
 
-    size_t n = 256 + 1; // height 2
+//    size_t n = 256 + 1; // height 2
+    size_t n = 20 * (256 + 1) + 1; // height 3
+
     int initial_num_bits = 2;
-    int maximum_num_items_threshold = 10;
+    int maximum_num_items_threshold = 4;
 
 
     for (int max_bp_size : max_bp_sizes) {
@@ -36,10 +54,26 @@ int main() {
             db_lru.put(key, val);
         }
 
+
+        vector<pair<db_key_t, db_val_t>> pairs_vec(pairs.begin(), pairs.end());
+        sort(pairs_vec.begin(), pairs_vec.end());
+
         auto start = std::chrono::high_resolution_clock::now();
-        for (auto pair : pairs) {
-            db_key_t key = pair.first;
-            db_lru.get(0);
+        // sort pairs by key
+
+//        for (auto pair: pairs_vec) {
+//                db_key_t key = pair.first;
+//                db_lru.get(key);
+//        }
+
+        for (int j = 0; j < 10; ++j) {
+            for (int i = 0; i < 8; ++i) {
+                db_lru.get(1);
+            }
+
+            for (int i = 0; i < 3; ++i) {
+                db_lru.get(256 * i);
+            }
         }
         auto stop = std::chrono::high_resolution_clock::now();
         
@@ -61,12 +95,21 @@ int main() {
         }
 
         start = std::chrono::high_resolution_clock::now();
-        for (auto pair : pairs) {
-            db_key_t key = pair.first;
-            db_clock.get(key);
+//        for (auto pair: pairs_vec) {
+//                db_key_t key = pair.first;
+//                db_clock.get(key);
+//        }
+        for (int j = 0; j < 10; ++j) {
+            for (int i = 0; i < 8; ++i) {
+                db_clock.get(1);
+            }
+
+            for (int i = 0; i < 3; ++i) {
+                db_clock.get(256 * i);
+            }
         }
         stop = std::chrono::high_resolution_clock::now();
-        
+
         // Calculate duration
         duration = std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
         runtime = duration.count() / 1000000.0; // convert to seconds
@@ -79,13 +122,13 @@ int main() {
     // Output the runtime
     cout << "LRU (better)" << endl;
     for (int i = 0; i < max_bp_sizes.size(); ++i) {
-        std::cout << "Maximum BP size: " << max_bp_sizes[i] << "; Time taken: " << lru_runtimes_workload_1[i] << " seconds" << std::endl;
+        std::cout << "size: " << max_bp_sizes[i] << "; LRU = " << lru_runtimes_workload_1[i] << "s vs = " << clock_runtimes_workload_1[i] << "s" << std::endl;
     }
-    cout << "Clock (worse)" << endl;
-    for (int i = 0; i < max_bp_sizes.size(); ++i) {
-        std::cout << "Maximum BP size: " << max_bp_sizes[i] << "; Time taken: " << clock_runtimes_workload_1[i] << " seconds" << std::endl;
-    }
-    // // Write the results to a CSV file
+//    cout << "Clock (worse)" << endl;
+//    for (int i = 0; i < max_bp_sizes.size(); ++i) {
+//        std::cout << "Maximum BP size: " << max_bp_sizes[i] << "; Time taken: " << clock_runtimes_workload_1[i] << " seconds" << std::endl;
+//    }
+//    // // Write the results to a CSV file
     // std::ofstream put_file("experiments/phase1_put_runtimes.csv");
     // put_file << "Input size,Runtime\n";
     // for (int i = 0; i < input_sizes.size(); ++i) {
