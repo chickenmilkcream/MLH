@@ -127,6 +127,7 @@ void BPDirectory::insert_page(void *page_content, int num_pairs_in_page, string 
 //    cout << "mallocing page" << endl;
     // Malloc memory for the page
     void *malloc_page = malloc(PAGE_SIZE);
+    cout << "__malloc" << endl;
     memcpy(malloc_page, page_content, PAGE_SIZE);
     // for (int i = 0; i < num_pairs_in_page; ++i)
     // {
@@ -175,6 +176,8 @@ void BPDirectory::insert_page(void *page_content, int num_pairs_in_page, string 
 
 void BPDirectory::evict_until_under_max_bp_size() {
     shared_ptr<PageFrame> pageToEvict = nullptr;
+    cout << "current_bp_size: " << this->current_bp_size << endl;
+    cout << "maximum_bp_size: " << this->maximum_bp_size << endl;
     while (this->current_bp_size > this->maximum_bp_size) {
         if (this->policy == "LRU") {
             pageToEvict = this->lru_cache->evict_one_page_item();
@@ -238,6 +241,7 @@ void BPDirectory::extend_directory()
 
 void BPDirectory::evict_page(shared_ptr<PageFrame> pageFrame) {
     // remove the pageFrame from the directory hash map and linked list
+    cout << "EVICT PAGE" << endl;
     string source = pageFrame->sst_name + to_string(pageFrame->page_number);
     string directory_key = this->hash_string(source);
     this->directory[directory_key]->remove_page_frame(pageFrame);
