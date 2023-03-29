@@ -31,13 +31,13 @@ db_val_t AVLTree::get(db_key_t key)
 
 void AVLTree::put(db_key_t key, db_val_t val)
 {
-  if (!this->root)
+  if (this->root)
   {
-    this->root = make_shared<AVLNode>(key, val);
+    this->root = this->root->put(key, val);
   }
   else
   {
-    this->root = this->root->put(key, val);
+    this->root = make_shared<AVLNode>(key, val);
   }
 }
 
@@ -47,6 +47,18 @@ void AVLTree::scan(db_key_t min_key, db_key_t max_key,
   if (this->root)
   {
     this->root->scan(min_key, max_key, pairs);
+  }
+}
+
+void AVLTree::del(db_key_t key)
+{
+  if (this->root)
+  {
+    this->root = this->root->del(key);
+  }
+  else
+  {
+    throw invalid_argument("Key not found");
   }
 }
 

@@ -28,6 +28,7 @@ public:
   shared_ptr<AVLNode> put(db_key_t key, db_val_t val);
   void scan(db_key_t min_key, db_key_t max_key,
             vector<pair<db_key_t, db_val_t> > &pairs);
+  shared_ptr<AVLNode> del(db_key_t key);
   void print(string prefix, bool is_left);
 
 private:
@@ -37,6 +38,7 @@ private:
 
   shared_ptr<AVLNode> rotate_left();
   shared_ptr<AVLNode> rotate_right();
+  shared_ptr<AVLNode> successor();
 };
 
 #endif
