@@ -19,7 +19,11 @@ int main(int argc, char *argv[])
 
     // KeyValueStore db = KeyValueStore(n * DB_PAIR_SIZE + 1); // writes zero SSTs (all in memory)
     // KeyValueStore db = KeyValueStore(n * DB_PAIR_SIZE); // writes one SST
-    KeyValueStore db = KeyValueStore(n * DB_PAIR_SIZE / 2); // writes two SSTs (+ some in memory)
+    string eviction_policy = "LRU";
+    int initial_num_bits = 2;
+    int maximum_bp_size = 1000;
+    int maximum_num_items_threshold = 10;
+    KeyValueStore db = KeyValueStore(n * DB_PAIR_SIZE / 2, eviction_policy, initial_num_bits, maximum_bp_size, maximum_num_items_threshold); // writes two SSTs (+ some in memory)
 
     // generate random key-value pairs
     unordered_map<db_key_t, db_val_t> pairs;
