@@ -23,13 +23,13 @@ int main() {
         4096  * 6,
         4096  * 7,
         4096  * 8,
-        4096  * 9
-        // 4096  * 10,
-        // 4096  * 11,
-        // 4096  * 12,
-        // 4096  * 13,
-        // 4096  * 14,
-        // 4096  * 15
+        4096  * 9,
+        4096  * 10,
+        4096  * 11,
+        4096  * 12,
+        4096  * 13,
+        4096  * 14,
+        4096  * 15
     };
     std::vector<int> max_bp_sizes(arr, arr + sizeof(arr) / sizeof(int));
     std::vector<double> lru_runtimes_workload_1;
@@ -66,20 +66,20 @@ int main() {
 
             // Workload 1
             auto start1 = std::chrono::high_resolution_clock::now();
-            // for (int j = 0; j < 30; ++j) {
-            //     for (int i = 0; i < 10; ++i) {
-            //         db.get(1);
-            //     }
+            for (int j = 0; j < 30; ++j) {
+                for (int i = 0; i < 10; ++i) {
+                    db1.get(1);
+                }
 
-            //     for (int i = 0; i < 20; ++i) {
-            //         db.get(256 * i);
-            //     }
-            // }
-
-            for (int i = 0; i < 1000; ++i) {
-                int key = dist(gen) == std::uniform_int_distribution<int>(0, 1000)(gen) ? 1 : std::uniform_int_distribution<int>(1000, n - 1)(gen);
-                db1.get(key);
+                for (int i = 0; i < 20; ++i) {
+                    db1.get(256 * i);
+                }
             }
+
+            // for (int i = 0; i < 1000; ++i) {
+            //     int key = dist(gen) == std::uniform_int_distribution<int>(0, 1000)(gen) ? 1 : std::uniform_int_distribution<int>(1000, n - 1)(gen);
+            //     db1.get(key);
+            // }
             auto stop1 = std::chrono::high_resolution_clock::now();
             auto duration1 = std::chrono::duration_cast<std::chrono::microseconds>(stop1 - start1);
             double runtime1 = duration1.count() / 1000000.0; // convert to seconds
