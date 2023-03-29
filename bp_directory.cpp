@@ -126,7 +126,6 @@ void BPDirectory::insert_page(void *page_content, int num_pairs_in_page, string 
     string source = sst_name + to_string(page_number);
     string directory_key = this->hash_string(source);
     this->current_bp_size += PAGE_SIZE;
-    // cout << "AMY current bp size insert_page " << this->current_bp_size << endl;
 
 //    cout << "mallocing page" << endl;
     // Malloc memory for the page
@@ -183,8 +182,6 @@ void BPDirectory::evict_until_under_max_bp_size() {
         if (pageToEvict != nullptr) {
             this->current_num_items--;
             this->current_bp_size -= PAGE_SIZE;
-            // cout << "AMY current bp size evict_until_under_max_bp_size " << this->current_bp_size << endl;
-//            cout << "evicting page number " << pageToEvict->page_number << " from sst " << pageToEvict->sst_name << endl;
             this->evict_page(pageToEvict);
         }
     }
@@ -223,7 +220,12 @@ void BPDirectory::extend_directory()
         shared_ptr<BPLinkedList> linkedlist = pair.second;
         new_directory[prefix + "0"] = linkedlist;
         new_directory[prefix + "1"] = linkedlist;
+    }
 
+    for (const auto &pair : this->directory)
+    {
+        string prefix = pair.first;
+        shared_ptr<BPLinkedList> linkedlist = pair.second;
         if (linkedlist->size > 1)
         {
             vector<string> shared_keys = this->get_keys_sharing_linkedlist(new_directory, prefix + "0"); // Shared keys should only be prefix + "0" and prefix + "1"
@@ -291,7 +293,11 @@ void BPDirectory::rehash_linked_list(map<string, shared_ptr<BPLinkedList> > *dir
     {
         string source = current->sst_name + to_string(current->page_number);
         string directory_key = this->hash_string(source);
-        key_to_new_linkedlist[directory_key]->add_page_frame(current->page_content, current->num_pairs_in_page, current->sst_name, current->page_number);
+        if (key_to_new_linkedlist.find(directory_key) == key_to_new_linkedlist.end()) {
+            (*directory)[directory_key]->add_page_frame(current->page_content, current->num_pairs_in_page, current->sst_name, current->page_number);
+        } else {
+            key_to_new_linkedlist[directory_key]->add_page_frame(current->page_content, current->num_pairs_in_page, current->sst_name, current->page_number);
+        }
         current = current->next;
     }
 
@@ -337,7 +343,6 @@ void BPDirectory::free_all_pages()
     {
         int num_pages_freed = prefix->second->free_all_pages();
         this->current_bp_size -= num_pages_freed * PAGE_SIZE;
-        // cout << "AMY current bp size free_all_pages " << this->current_bp_size << endl;
     }
 }
 
