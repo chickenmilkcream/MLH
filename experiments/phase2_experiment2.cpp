@@ -6,6 +6,20 @@
 #include <random>
 #include <vector>
 
+#include <iostream>
+#include <chrono>
+#include <fstream>
+#include <vector>
+
+#include <random>
+#include <iostream>
+#include <algorithm>
+#include <cassert>
+#include <unistd.h>
+#include <unordered_map>
+#include <vector>
+
+
 using namespace std;
 
 int main(int argc, char *argv[]) {
@@ -28,6 +42,9 @@ int main(int argc, char *argv[]) {
     // N = 40000 (b-tree search): 117.996
     // N = 50000 (binary search): 154.598
     // N = 50000 (b-tree search): 125.24
+
+    std::vector<double> binary_search_runtimes;
+    std::vector<double> b_tree_search_runtimes;
 
     for (size_t n : nlist) {
         for (search_alg alg : algs) {
@@ -77,6 +94,23 @@ int main(int argc, char *argv[]) {
             double runtime = duration.count() / 1000000.0; // convert to seconds
 
             cout << "N = " << n << (alg == search_alg::binary_search ? " (binary search): " : " (b-tree search): ") << runtime << endl;
+        
+            if (alg == search_alg::binary_search) {
+                binary_search_runtimes.push_back(runtime);
+            } else {
+                b_tree_search_runtimes.push_back(runtime);
+            }
         }
     }
+
+    std::ofstream search_file;
+    search_file.open("experiments/phase2_search_runtimes.csv");
+    search_file << "Data Size,Binary Search Runtime,B Tree Runtime\n";
+    for (int i = 0; i < nlist.size(); ++i) {
+        search_file << nlist[i] << "," << binary_search_runtimes[i] << "," << b_tree_search_runtimes[i] << "\n";
+    }
+    search_file.close();
+
+    // plot results
+    system("python3 experiments/phase2_experiment2_plot.py");
 }

@@ -122,7 +122,7 @@ int main() {
     }
     workload_1_file.close();
     std::ofstream workload_2_file("experiments/phase2_workload_2_runtimes.csv");
-    workload_1_file << "Maximum Bufferpool Size,LRU Runtime,Clock Runtime\n";
+    workload_2_file << "Maximum Bufferpool Size,LRU Runtime,Clock Runtime\n";
     for (int i = 0; i < max_bp_sizes.size(); ++i) {
         workload_2_file << max_bp_sizes[i] << "," << lru_runtimes_workload_2[i] << "," << clock_runtimes_workload_2[i] << "\n";
     }
