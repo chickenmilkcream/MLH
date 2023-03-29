@@ -5,7 +5,7 @@
 
 using namespace std;
 
-Memtable::Memtable(uint64_t memtable_size)
+Memtable::Memtable(size_t memtable_size)
 {
   this->max_size = memtable_size;
   this->size = 0;
@@ -18,7 +18,7 @@ void Memtable::put(db_key_t key, db_val_t val)
 {
   if (!this->tree.has(key))
   {
-    this->size += sizeof(db_key_t) + sizeof(db_val_t); // 16 bytes per key-value pair
+    this->size += DB_PAIR_SIZE; // 16 bytes per key-value pair
   }
   this->tree.put(key, val);
 }

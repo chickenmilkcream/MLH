@@ -4,10 +4,17 @@
 #include <memory>
 #include <vector>
 
+#define DB_KEY_MIN INT64_MIN
+#define DB_KEY_MAX INT64_MAX
+
 using namespace std;
 
 typedef int64_t db_key_t;
 typedef int64_t db_val_t;
+
+#define DB_KEY_SIZE sizeof(db_key_t)
+#define DB_VAL_SIZE sizeof(db_val_t)
+#define DB_PAIR_SIZE (sizeof(db_key_t) + sizeof(db_val_t))
 
 class AVLNode : public enable_shared_from_this<AVLNode>
 {
@@ -26,7 +33,7 @@ public:
 private:
   shared_ptr<AVLNode> left;
   shared_ptr<AVLNode> right;
-  unsigned int height;
+  size_t height;
 
   shared_ptr<AVLNode> rotate_left();
   shared_ptr<AVLNode> rotate_right();

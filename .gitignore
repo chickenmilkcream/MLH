@@ -5,3 +5,5 @@ main
 *_experiments
 *_tests
 *.bin
+*.exe
+.nfs*
