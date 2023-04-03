@@ -217,6 +217,15 @@ void KeyValueStore::put(db_key_t key, db_val_t val)
     }
 }
 
+void KeyValueStore::del(db_key_t key)
+{
+    try {
+        this->memtable.del(key);
+    } catch (invalid_argument &e) {
+        throw invalid_argument("Key not found");
+    }
+}
+
 vector<pair<db_key_t, db_val_t> > KeyValueStore::scan(db_key_t min_key, db_key_t max_key, search_alg alg)
 {
     size_t b = PAGE_SIZE / DB_PAIR_SIZE; // number of key-value pairs per page
