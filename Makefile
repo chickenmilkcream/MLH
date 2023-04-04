@@ -1,6 +1,6 @@
 CC := g++
 CFLAGS := -Wall -g
-OBJFILES := avl_node.o avl_tree.o memtable.o kv_store.o xxhash.o ClockBitmap.o LRUCache.o bp_pageframe.o bp_linkedlist.o bp_directory.o
+OBJFILES := avl_node.o avl_tree.o memtable.o kv_store.o xxhash.o BloomFilter.o ClockBitmap.o LRUCache.o bp_pageframe.o bp_linkedlist.o bp_directory.o
 
 all: clean phase2_clock
 
@@ -42,3 +42,9 @@ clean:
 
 valgrind: clean phase2_tests
 	valgrind --leak-check=full --show-leak-kinds=all --track-origins=yes --verbose ./phase2_tests
+
+
+
+bloom: clean $(OBJFILES) experiments/bloom.o
+	$(CC) $(CFLAGS) -o experiments/bloom $(OBJFILES) experiments/bloom.o
+	./experiments/bloom
