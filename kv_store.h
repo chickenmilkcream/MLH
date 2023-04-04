@@ -23,6 +23,7 @@ public:
   void close_db();
   db_val_t get(db_key_t key, search_alg alg = search_alg::b_tree_search);
   void put(db_key_t key, db_val_t val);
+  void del(db_key_t key);
   vector<pair<db_key_t, db_val_t> > scan(db_key_t min_key,
                                          db_key_t max_key,
                                          search_alg alg = search_alg::b_tree_search);
