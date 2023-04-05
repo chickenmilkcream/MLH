@@ -4,6 +4,7 @@
 #include <iostream>
 #include <unistd.h>
 #include <vector>
+#include <stdio.h>
 
 #include "kv_store.h"
 
@@ -207,7 +208,11 @@ db_val_t KeyValueStore::get(db_key_t key, search_alg alg)
 }
 
 void KeyValueStore::put(db_key_t key, db_val_t val)
-{
+{   
+    if (val == DB_TOMBSTONE) {
+        throw invalid_argument("Value not allowed");
+    }
+
     this->memtable.put(key, val);
 
     if (this->memtable.size + DB_PAIR_SIZE > this->memtable.max_size)
@@ -219,11 +224,7 @@ void KeyValueStore::put(db_key_t key, db_val_t val)
 
 void KeyValueStore::del(db_key_t key)
 {
-    try {
-        this->memtable.del(key);
-    } catch (invalid_argument &e) {
-        throw invalid_argument("Key not found");
-    }
+    this->memtable.del(key);
 }
 
 vector<pair<db_key_t, db_val_t> > KeyValueStore::scan(db_key_t min_key, db_key_t max_key, search_alg alg)
@@ -421,6 +422,187 @@ void KeyValueStore::read_from_file(const char *filename)
     cout << "]" << endl;
 }
 
+void KeyValueStore::compact_files(vector<const char *> filenames)
+{
+    if (filenames.size() != SIZE_RATIO) {
+        throw invalid_argument("Number of filenames provided does not match size ratio");   
+    }
+
+    size_t b = PAGE_SIZE / DB_PAIR_SIZE; // number of key-value pairs per page
+
+    // input buffers
+    char buf_in[SIZE_RATIO][PAGE_SIZE];
+    
+    // output buffer
+    char buf_out[PAGE_SIZE];
+
+    // open input files
+    int fd_in[SIZE_RATIO];
+    for (size_t i = 0; i < SIZE_RATIO; i++) {
+        fd_in[i] = open(filenames[i], O_RDONLY | O_DIRECT | O_SYNC);
+    }
+
+    // open output file
+    int fd_out = open("temp",
+                      O_RDWR | O_DIRECT | O_SYNC | O_TRUNC | O_CREAT,
+                      S_IRUSR | S_IWUSR);
+
+    off_t fp_in[SIZE_RATIO] = {0};
+    off_t fp_out = 0;
+
+    vector<size_t> sizes_in[SIZE_RATIO];
+    vector<size_t> sizes_out;
+    size_t height_in[SIZE_RATIO];
+    size_t height_out;
+
+    for (size_t i = 0; i < SIZE_RATIO; i++) {
+        this->sizes(filenames[i], fd_in[i], fp_in[i], sizes_in[i], height_in[i]);
+    }
+
+    // increment fp_in to offset of terminal nodes
+    for (size_t i = 0; i < SIZE_RATIO; i++) {
+        for (size_t j = 0; j < height_in[i] - 1; j++) {
+            fp_in[i] += nceil(sizes_in[i][j] * DB_KEY_SIZE, PAGE_SIZE);
+        }
+    }
+
+    off_t start_in[SIZE_RATIO];
+    off_t start_out = fp_out;
+    memcpy(start_in, fp_in, SIZE_RATIO * sizeof(off_t));
+
+    off_t offset_in[SIZE_RATIO]; // fp_in is page-aligned but offset_in is not stricly page-aligned (same for fp_out and offset_out)
+    off_t offset_out = start_out;
+    memcpy(offset_in, start_in, SIZE_RATIO * sizeof(off_t));
+
+    // read pages from input files to input buffers
+    for (size_t i = 0; i < SIZE_RATIO; i++) {
+        this->bpread(filenames[i], fd_in[i], buf_in[i], fp_in[i]);
+        fp_in[i] += PAGE_SIZE;
+    }
+
+    vector<db_key_t> fence_nodes; // assumes non-terminal nodes fit in memory
+    while (true) {
+        // read minimum key from input buffers
+        size_t i = 0;
+        while (i < SIZE_RATIO &&
+               (offset_in[i] - start_in[i]) / DB_PAIR_SIZE == sizes_in[i][height_in[i] - 1]) {
+            i++; // find file that has NOT been fully read yet
+        }
+        if (i == SIZE_RATIO) {
+            // write output buffer to page in output file, if applicable
+            if ((offset_out - fp_out) / DB_PAIR_SIZE < b) {
+                aligned_pwrite(fd_out, buf_out, PAGE_SIZE, fp_out);
+            } else {
+                fence_nodes.pop_back(); // last fence node is not needed
+            }
+            break;
+        }
+
+        db_key_t min_key = ((pair<db_key_t, db_val_t> *) buf_in[i])[(offset_in[i] - fp_in[i] + PAGE_SIZE) / DB_PAIR_SIZE].first;
+        for (size_t j = i + 1; j < SIZE_RATIO; j++) {
+            if ((offset_in[j] - start_in[j]) / DB_PAIR_SIZE < sizes_in[j][height_in[j] - 1]) {
+                // file has NOT been fully read yet
+                db_key_t key = ((pair<db_key_t, db_val_t> *) buf_in[j])[(offset_in[j] - fp_in[j] + PAGE_SIZE) / DB_PAIR_SIZE].first;
+                if (key < min_key) {
+                    min_key = key;
+                    i = j;
+                }
+            }
+        }
+
+        // write minimum key to output buffer
+        // if (min_key != DB_TOMBSTONE) {// TODO: FINISH
+            ((pair<db_key_t, db_val_t> *) buf_out)[(offset_out - fp_out) / DB_PAIR_SIZE] = 
+                ((pair<db_key_t, db_val_t> *) buf_in[i])[(offset_in[i] - fp_in[i] + PAGE_SIZE) / DB_PAIR_SIZE];
+            offset_out += DB_PAIR_SIZE;
+        // }
+        offset_in[i] += DB_PAIR_SIZE;
+
+        // read page in input file to input buffer, if applicable
+        if ((offset_in[i] - fp_in[i] + PAGE_SIZE) / DB_PAIR_SIZE == b &&
+            (offset_in[i] - start_in[i]) / DB_PAIR_SIZE < sizes_in[i][height_in[i] - 1]) {
+            this->bpread(filenames[i], fd_in[i], buf_in[i], fp_in[i]);
+            fp_in[i] += PAGE_SIZE;
+        }
+
+        // write output buffer to page in output file, if applicable
+        if ((offset_out - fp_out) / DB_PAIR_SIZE == b) {
+            aligned_pwrite(fd_out, buf_out, PAGE_SIZE, fp_out);
+            fp_out += PAGE_SIZE;
+            fence_nodes.push_back(((pair<db_key_t, db_val_t> *) buf_out)[b - 1].first);
+        }
+    }
+
+    // TODO: tombstones and updates
+
+
+
+
+    height_out = ceil(log((double) offset_out / DB_PAIR_SIZE / b) / log(b + 1)) + 1;
+    
+    // populate levels 0 - (height_out - 2)
+    vector<vector<db_key_t> > non_terminal_nodes;
+    for (size_t i = 0; i < height_out - 1; i++) {
+        non_terminal_nodes.push_back({});
+    }
+
+    size_t i = b - 1;
+    size_t prev_j = 0;
+    while (i < offset_out / DB_PAIR_SIZE) {
+        for (size_t j = height_out - 2; j >= 0; j--) {
+            if ((i + 1) % ((size_t) pow(b + 1, j) * b) == 0) {
+                if (i < offset_out / DB_PAIR_SIZE - 1 || j < prev_j) {
+                    non_terminal_nodes[height_out - 2 - j].push_back(fence_nodes[i / b]);
+                }
+                prev_j = j;
+                break;
+            }
+        }
+        i += b;
+    }
+
+    for (size_t i = 0; i < height_out - 1; i++) {
+        size_t size_out = non_terminal_nodes[i].size();
+        sizes_out.push_back(size_out);
+    }
+    size_t size_out = offset_out / DB_PAIR_SIZE;
+    sizes_out.push_back(size_out);
+    sizes_out.push_back(0); // write null terminator
+
+    const char *filename = "sst_0_0";
+    this->write_to_file(filename, sizes_out, non_terminal_nodes, {make_pair(0, 0)});
+
+    // append terminal nodes to output file
+    int fd = open(filename, O_WRONLY | O_DIRECT | O_SYNC);
+    off_t fp = nceil((height_out + 1) * sizeof(size_t), PAGE_SIZE);    
+    for (size_t i = 0; i < height_out - 1; i++) {
+        fp += nceil(sizes_out[i] * DB_KEY_SIZE, PAGE_SIZE);
+    }
+
+    char buf[PAGE_SIZE];
+
+    fp_out = 0;
+    while (fp_out < nceil(sizes_out[height_out - 1] * DB_PAIR_SIZE, PAGE_SIZE)) {
+        aligned_pread(fd_out, buf, PAGE_SIZE, fp_out);
+        fp_out += PAGE_SIZE;
+        aligned_pwrite(fd, buf, PAGE_SIZE, fp);
+        fp += PAGE_SIZE;
+    }
+
+    // close input files
+    for (size_t i = 0; i < SIZE_RATIO; i++) {
+        close(fd_in[i]);
+        remove(filenames[i]);
+    }
+
+    // close temp file
+    close(fd_out);
+    remove("temp");
+
+    // close output file
+    close(fd);
+}
+
 void KeyValueStore::serialize()
 {
     size_t b = PAGE_SIZE / DB_PAIR_SIZE; // number of key-value pairs per page
@@ -441,12 +623,14 @@ void KeyValueStore::serialize()
     }
 
     size_t i = b - 1;
+    size_t prev_j = 0;
     while (i < pairs.size()) {
-        for (size_t j = height; j > 0; j--) {
-            if ((i + 1) % ((size_t) pow(b + 1, j - 1) * b) == 0) {
-                if (j < height) {
-                    non_terminal_nodes[height - j - 1].push_back(pairs[i].first);
+        for (size_t j = height - 2; j >= 0; j--) {
+            if ((i + 1) % ((size_t) pow(b + 1, j) * b) == 0) {
+                if (i < pairs.size() - 1 || j < prev_j) {
+                    non_terminal_nodes[height - 2 - j].push_back(pairs[i].first);
                 }
+                prev_j = j;
                 break;
             }
         }

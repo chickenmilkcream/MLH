@@ -8,6 +8,9 @@
 #include "bp_directory.h"
 
 #define PAGE_SIZE 4096 // must be 4096 for direct I/O
+#define SIZE_RATIO 2
+
+#define DB_TOMBSTONE INT64_MIN
 
 using namespace std;
 
@@ -29,6 +32,7 @@ public:
                                          search_alg alg = search_alg::b_tree_search);
   void read_from_file(const char *filename);
   void print();
+  void compact_files(vector<const char *> filenames);
 
 private:
   Memtable memtable;
