@@ -35,21 +35,52 @@ int main(int argc, char *argv[])
     KeyValueStore db = KeyValueStore(4096 * DB_PAIR_SIZE, eviction_policy, initial_num_bits, maximum_bp_size, maximum_num_items_threshold); // writes n / 4096 SSTs
 
 
-    for (int i = 0; i < n; i++) {
-        db.put(i, i);
+    // for (int i = 0; i < n; i++) {
+    //     db.put(i, i);
+    // }
+
+    // db.read_from_file("sst.5.1.bin");
+
+    // for (int i = 0; i < n; i++) {
+    //     db.get(i);
+    //     if (i > 0 && i % 1000 == 0) {
+    //         cout << "Tested " << i << " get operations so far..." << endl;
+    //     }
+    // }
+
+    // db.close_db();
+
+    db = KeyValueStore(3 * DB_PAIR_SIZE, eviction_policy, initial_num_bits, maximum_bp_size, maximum_num_items_threshold); // writes n / 4096 SSTs
+    // sst.1.1.bin should be created
+    db.put(0, 1);
+    db.put(1, 1);
+    db.put(2, 1);
+    db.read_from_file("sst.1.1.bin");
+    // sst.1.2.bin should be created
+    db.put(0, 100);
+    db.put(1, 3);
+    db.del(2);
+    db.read_from_file("sst.2.1.bin");
+
+    db.put(3, 1);
+    db.put(4, 1);
+    db.put(5, 1);
+    db.read_from_file("sst.1.1.bin");
+
+    db.put(3, 1);
+    db.put(4, 1);
+    db.del(1);
+    db.read_from_file("sst.3.1.bin");
+    // sst.2.1.bin should be created from merging
+    assert(db.get(0) == 100);
+    try
+    {
+        db.get(2);
+        assert(false);
     }
-
-    db.read_from_file("sst.5.1.bin");
-
-    for (int i = 0; i < n; i++) {
-        db.get(i);
-        if (i > 0 && i % 1000 == 0) {
-            cout << "Tested " << i << " get operations so far..." << endl;
-        }
+    catch (invalid_argument e)
+    {
     }
-
-    db.close_db();
-    /* ==================== B-TREE GET, PUT, SCAN TESTS ==================== */
 }
 
 

@@ -238,6 +238,11 @@ void KeyValueStore::put(db_key_t key, db_val_t val)
 void KeyValueStore::del(db_key_t key)
 {
     this->memtable.put(key, DB_TOMBSTONE);
+
+    if (this->memtable.size + DB_PAIR_SIZE > this->memtable.max_size)
+    {
+        this->serialize();
+    }
 }
 
 vector<pair<db_key_t, db_val_t> > KeyValueStore::scan(db_key_t min_key, db_key_t max_key, search_alg alg)
