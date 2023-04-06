@@ -350,6 +350,45 @@ void KeyValueStore::write_to_file(const char *filename,
     close(fd);
 }
 
+void KeyValueStore::write_to_file(const char *filename,
+                                  vector<size_t> sizes,
+                                  vector<vector<db_key_t> > non_terminal_nodes,
+                                  const char *terminal_nodes)
+{
+    int fd = open(filename,
+                  O_WRONLY | O_DIRECT | O_SYNC | O_TRUNC | O_CREAT,
+                  S_IRUSR | S_IWUSR);
+    off_t fp = 0;    
+    size_t height = sizes.size() - 1;
+
+    aligned_pwrite(fd, sizes.data(), (height + 1) * sizeof(size_t), fp);
+    fp += nceil((height + 1) * sizeof(size_t), PAGE_SIZE);
+
+    // write levels 0 - (height - 2)
+    for (size_t i = 0; i < height - 1; i++) {
+        aligned_pwrite(fd,
+                       non_terminal_nodes[i].data(),
+                       sizes[i] * DB_KEY_SIZE,
+                       fp);
+        fp += nceil(sizes[i] * DB_KEY_SIZE, PAGE_SIZE);
+    }
+
+    // write level height - 1
+    int fd_terminal_nodes = open(terminal_nodes, O_RDONLY | O_DIRECT | O_SYNC);
+    off_t fp_terminal_nodes = 0;
+
+    char buf[PAGE_SIZE];
+
+    while (fp_terminal_nodes < nceil(sizes[height - 1] * DB_PAIR_SIZE, PAGE_SIZE)) {
+        aligned_pread(fd_terminal_nodes, buf, PAGE_SIZE, fp_terminal_nodes);
+        fp_terminal_nodes += PAGE_SIZE;
+        aligned_pwrite(fd, buf, PAGE_SIZE, fp);
+        fp += PAGE_SIZE;
+    }
+
+    close(fd);
+}
+
 // for debugging
 void KeyValueStore::read_from_file(const char *filename)
 {
@@ -422,12 +461,19 @@ void KeyValueStore::read_from_file(const char *filename)
     cout << "]" << endl;
 }
 
-void KeyValueStore::compact_files(vector<const char *> filenames)
+void KeyValueStore::compact_files(vector<const char *> filenames) // filenames are ordered from NEWEST to OLDEST
 {
-    if (filenames.size() != SIZE_RATIO) {
-        throw invalid_argument("Number of filenames provided does not match size ratio");   
-    }
+    size_t size;
+    vector<db_key_t> fence_keys;
+    this->compact_files_first_pass(filenames, size, fence_keys);
+    this->compact_files_second_pass(size, fence_keys);
+}
 
+// first pass does compaction
+void KeyValueStore::compact_files_first_pass(vector<const char *> filenames,
+                                             size_t &size,
+                                             vector<db_key_t> &fence_keys)
+{
     size_t b = PAGE_SIZE / DB_PAIR_SIZE; // number of key-value pairs per page
 
     // input buffers
@@ -444,150 +490,102 @@ void KeyValueStore::compact_files(vector<const char *> filenames)
 
     // open output file
     int fd_out = open("temp",
-                      O_RDWR | O_DIRECT | O_SYNC | O_TRUNC | O_CREAT,
+                      O_WRONLY | O_DIRECT | O_SYNC | O_TRUNC | O_CREAT,
                       S_IRUSR | S_IWUSR);
 
+    // offset of terminal nodes in input files
+    off_t start_in[SIZE_RATIO];
+
+    // offset of terminal nodes in output file
+    off_t start_out = 0;
+
+    // page-aligned offsets in input files for reads/writes
     off_t fp_in[SIZE_RATIO] = {0};
+
+    // page-aligned offset in output file for reads/writes
     off_t fp_out = 0;
 
-    vector<size_t> sizes_in[SIZE_RATIO];
-    vector<size_t> sizes_out;
-    size_t height_in[SIZE_RATIO];
-    size_t height_out;
-
+    vector<size_t> sizes[SIZE_RATIO];
+    size_t height[SIZE_RATIO];
     for (size_t i = 0; i < SIZE_RATIO; i++) {
-        this->sizes(filenames[i], fd_in[i], fp_in[i], sizes_in[i], height_in[i]);
-    }
-
-    // increment fp_in to offset of terminal nodes
-    for (size_t i = 0; i < SIZE_RATIO; i++) {
-        for (size_t j = 0; j < height_in[i] - 1; j++) {
-            fp_in[i] += nceil(sizes_in[i][j] * DB_KEY_SIZE, PAGE_SIZE);
+        this->sizes(filenames[i], fd_in[i], fp_in[i], sizes[i], height[i]);
+        start_in[i] = fp_in[i];
+        for (size_t j = 0; j < height[i] - 1; j++) {
+            start_in[i] += nceil(sizes[i][j] * DB_KEY_SIZE, PAGE_SIZE);
         }
+        fp_in[i] = start_in[i];
     }
 
-    off_t start_in[SIZE_RATIO];
-    off_t start_out = fp_out;
-    memcpy(start_in, fp_in, SIZE_RATIO * sizeof(off_t));
-
-    off_t offset_in[SIZE_RATIO]; // fp_in is page-aligned but offset_in is not stricly page-aligned (same for fp_out and offset_out)
-    off_t offset_out = start_out;
+    // similar to fp_in, but not necessarily page-aligned
+    off_t offset_in[SIZE_RATIO];
     memcpy(offset_in, start_in, SIZE_RATIO * sizeof(off_t));
 
-    // read pages from input files to input buffers
+    // similar to fp_out, but not necessarily page-aligned
+    off_t offset_out = start_out;
+
+    // read pages from input files into input buffers
     for (size_t i = 0; i < SIZE_RATIO; i++) {
         this->bpread(filenames[i], fd_in[i], buf_in[i], fp_in[i]);
         fp_in[i] += PAGE_SIZE;
     }
 
-    vector<db_key_t> fence_nodes; // assumes non-terminal nodes fit in memory
+    db_key_t min_key_prev;
     while (true) {
-        // read minimum key from input buffers
         size_t i = 0;
-        while (i < SIZE_RATIO &&
-               (offset_in[i] - start_in[i]) / DB_PAIR_SIZE == sizes_in[i][height_in[i] - 1]) {
-            i++; // find file that has NOT been fully read yet
+        while (i < SIZE_RATIO && (offset_in[i] - start_in[i]) / DB_PAIR_SIZE == sizes[i][height[i] - 1]) {
+            // i-th file has been fully read
+            i++;
         }
         if (i == SIZE_RATIO) {
-            // write output buffer to page in output file, if applicable
+            // write output buffer to page in output file, if not empty
             if ((offset_out - fp_out) / DB_PAIR_SIZE < b) {
                 aligned_pwrite(fd_out, buf_out, PAGE_SIZE, fp_out);
             } else {
-                fence_nodes.pop_back(); // last fence node is not needed
+                fence_keys.pop_back();
             }
             break;
         }
 
+        // read minimum key from input buffers
         db_key_t min_key = ((pair<db_key_t, db_val_t> *) buf_in[i])[(offset_in[i] - fp_in[i] + PAGE_SIZE) / DB_PAIR_SIZE].first;
+        db_val_t val = ((pair<db_key_t, db_val_t> *) buf_in[i])[(offset_in[i] - fp_in[i] + PAGE_SIZE) / DB_PAIR_SIZE].second;
         for (size_t j = i + 1; j < SIZE_RATIO; j++) {
-            if ((offset_in[j] - start_in[j]) / DB_PAIR_SIZE < sizes_in[j][height_in[j] - 1]) {
-                // file has NOT been fully read yet
+            if ((offset_in[j] - start_in[j]) / DB_PAIR_SIZE < sizes[j][height[j] - 1]) {
+                // j-th file has NOT been fully read yet
                 db_key_t key = ((pair<db_key_t, db_val_t> *) buf_in[j])[(offset_in[j] - fp_in[j] + PAGE_SIZE) / DB_PAIR_SIZE].first;
                 if (key < min_key) {
                     min_key = key;
+                    val = ((pair<db_key_t, db_val_t> *) buf_in[j])[(offset_in[j] - fp_in[j] + PAGE_SIZE) / DB_PAIR_SIZE].second;
                     i = j;
                 }
             }
         }
 
         // write minimum key to output buffer
-        // if (min_key != DB_TOMBSTONE) {// TODO: FINISH
-            ((pair<db_key_t, db_val_t> *) buf_out)[(offset_out - fp_out) / DB_PAIR_SIZE] = 
-                ((pair<db_key_t, db_val_t> *) buf_in[i])[(offset_in[i] - fp_in[i] + PAGE_SIZE) / DB_PAIR_SIZE];
+        if ((offset_out - start_out == 0 || min_key != min_key_prev) && val != DB_TOMBSTONE) {
+            ((pair<db_key_t, db_val_t> *) buf_out)[(offset_out - fp_out) / DB_PAIR_SIZE] = make_pair(min_key, val);
             offset_out += DB_PAIR_SIZE;
-        // }
+        }
         offset_in[i] += DB_PAIR_SIZE;
 
-        // read page in input file to input buffer, if applicable
+        min_key_prev = min_key;
+
         if ((offset_in[i] - fp_in[i] + PAGE_SIZE) / DB_PAIR_SIZE == b &&
-            (offset_in[i] - start_in[i]) / DB_PAIR_SIZE < sizes_in[i][height_in[i] - 1]) {
+            (offset_in[i] - start_in[i]) / DB_PAIR_SIZE < sizes[i][height[i] - 1]) {
+            // read page in input file to input buffer
             this->bpread(filenames[i], fd_in[i], buf_in[i], fp_in[i]);
             fp_in[i] += PAGE_SIZE;
         }
 
-        // write output buffer to page in output file, if applicable
         if ((offset_out - fp_out) / DB_PAIR_SIZE == b) {
+            // write output buffer to page in output file
             aligned_pwrite(fd_out, buf_out, PAGE_SIZE, fp_out);
             fp_out += PAGE_SIZE;
-            fence_nodes.push_back(((pair<db_key_t, db_val_t> *) buf_out)[b - 1].first);
+            fence_keys.push_back(((pair<db_key_t, db_val_t> *) buf_out)[b - 1].first);
         }
     }
 
-    // TODO: tombstones and updates
-
-
-
-
-    height_out = ceil(log((double) offset_out / DB_PAIR_SIZE / b) / log(b + 1)) + 1;
-    
-    // populate levels 0 - (height_out - 2)
-    vector<vector<db_key_t> > non_terminal_nodes;
-    for (size_t i = 0; i < height_out - 1; i++) {
-        non_terminal_nodes.push_back({});
-    }
-
-    size_t i = b - 1;
-    size_t prev_j = 0;
-    while (i < offset_out / DB_PAIR_SIZE) {
-        for (size_t j = height_out - 2; j >= 0; j--) {
-            if ((i + 1) % ((size_t) pow(b + 1, j) * b) == 0) {
-                if (i < offset_out / DB_PAIR_SIZE - 1 || j < prev_j) {
-                    non_terminal_nodes[height_out - 2 - j].push_back(fence_nodes[i / b]);
-                }
-                prev_j = j;
-                break;
-            }
-        }
-        i += b;
-    }
-
-    for (size_t i = 0; i < height_out - 1; i++) {
-        size_t size_out = non_terminal_nodes[i].size();
-        sizes_out.push_back(size_out);
-    }
-    size_t size_out = offset_out / DB_PAIR_SIZE;
-    sizes_out.push_back(size_out);
-    sizes_out.push_back(0); // write null terminator
-
-    const char *filename = "sst_0_0";
-    this->write_to_file(filename, sizes_out, non_terminal_nodes, {make_pair(0, 0)});
-
-    // append terminal nodes to output file
-    int fd = open(filename, O_WRONLY | O_DIRECT | O_SYNC);
-    off_t fp = nceil((height_out + 1) * sizeof(size_t), PAGE_SIZE);    
-    for (size_t i = 0; i < height_out - 1; i++) {
-        fp += nceil(sizes_out[i] * DB_KEY_SIZE, PAGE_SIZE);
-    }
-
-    char buf[PAGE_SIZE];
-
-    fp_out = 0;
-    while (fp_out < nceil(sizes_out[height_out - 1] * DB_PAIR_SIZE, PAGE_SIZE)) {
-        aligned_pread(fd_out, buf, PAGE_SIZE, fp_out);
-        fp_out += PAGE_SIZE;
-        aligned_pwrite(fd, buf, PAGE_SIZE, fp);
-        fp += PAGE_SIZE;
-    }
+    size = offset_out / DB_PAIR_SIZE;
 
     // close input files
     for (size_t i = 0; i < SIZE_RATIO; i++) {
@@ -595,12 +593,55 @@ void KeyValueStore::compact_files(vector<const char *> filenames)
         remove(filenames[i]);
     }
 
-    // close temp file
+    // close output file
     close(fd_out);
+}
+
+// second pass does B-tree reconstruction
+void KeyValueStore::compact_files_second_pass(size_t size,
+                                              vector<db_key_t> fence_keys)
+{
+    size_t b = PAGE_SIZE / DB_PAIR_SIZE; // number of key-value pairs per page
+
+    size_t height = ceil(log((double) size / b) / log(b + 1)) + 1;
+
+    // populate levels 0 - (height - 2)
+    vector<vector<db_key_t> > non_terminal_nodes;
+    for (size_t i = 0; i < height - 1; i++) {
+        non_terminal_nodes.push_back({});
+    }
+
+    size_t i = b - 1;
+    ssize_t j_prev = 0;
+    while (i < size) {
+        for (ssize_t j = height - 2; j >= 0; j--) {
+            if ((i + 1) % ((size_t) pow(b + 1, j) * b) == 0) {
+                if (i < size - 1 || j < j_prev) {
+                    non_terminal_nodes[height - 2 - j].push_back(fence_keys[i / b]);
+                }
+                j_prev = j;
+                break;
+            }
+        }
+        i += b;
+    }
+
+    // populate level (height - 1)
+    const char *terminal_nodes = "temp";
+
+    vector<size_t> sizes;
+    for (size_t i = 0; i < height - 1; i++) {
+        sizes.push_back(non_terminal_nodes[i].size());
+    }
+    sizes.push_back(size);
+    sizes.push_back(0); // write null terminator
+
+    const char *filename = "sst_1.bin"; // TODO: what to call this
+    this->write_to_file(filename, sizes, non_terminal_nodes, terminal_nodes);
     remove("temp");
 
-    // close output file
-    close(fd);
+    // TODO: remove
+    this->sst_count = 2;
 }
 
 void KeyValueStore::serialize()
@@ -623,14 +664,14 @@ void KeyValueStore::serialize()
     }
 
     size_t i = b - 1;
-    size_t prev_j = 0;
+    ssize_t j_prev = 0;
     while (i < pairs.size()) {
-        for (size_t j = height - 2; j >= 0; j--) {
+        for (ssize_t j = height - 2; j >= 0; j--) {
             if ((i + 1) % ((size_t) pow(b + 1, j) * b) == 0) {
-                if (i < pairs.size() - 1 || j < prev_j) {
+                if (i < pairs.size() - 1 || j < j_prev) {
                     non_terminal_nodes[height - 2 - j].push_back(pairs[i].first);
                 }
-                prev_j = j;
+                j_prev = j;
                 break;
             }
         }
@@ -642,11 +683,9 @@ void KeyValueStore::serialize()
     
     vector<size_t> sizes;
     for (size_t i = 0; i < height - 1; i++) {
-        size_t size = non_terminal_nodes[i].size();
-        sizes.push_back(size);
+        sizes.push_back(non_terminal_nodes[i].size());
     }
-    size_t size = terminal_nodes.size();
-    sizes.push_back(size);
+    sizes.push_back(terminal_nodes.size());
     sizes.push_back(0); // write null terminator
 
     const char *filename = ("sst_" + to_string(this->sst_count) + ".bin").c_str();

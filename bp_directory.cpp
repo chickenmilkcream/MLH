@@ -87,7 +87,7 @@ void BPDirectory::move_clock_hand() {
     // std::cout << "Moving clock hand" << std::endl;
     if (this->clock_hand_location == nullptr) {
         this->clock_hand_key++;
-        if (this->clock_hand_key >= this->directory_keys.size()) {
+        if ((size_t) this->clock_hand_key >= this->directory_keys.size()) {
             this->clock_hand_key = 0;
             this->clock_cycle_count++;
         }

@@ -33,6 +33,10 @@ public:
   void read_from_file(const char *filename);
   void print();
   void compact_files(vector<const char *> filenames);
+  void compact_files_first_pass(vector<const char *> filenames,
+                                size_t &size,
+                                vector<db_key_t> &fence_keys);
+  void compact_files_second_pass(size_t size, vector<db_key_t> fence_keys);
 
 private:
   Memtable memtable;
@@ -45,6 +49,10 @@ private:
                      vector<size_t> sizes,
                      vector<vector<db_key_t> > non_terminal_nodes,
                      vector<pair<db_key_t, db_val_t> > terminal_nodes);
+  void write_to_file(const char *filename,
+                     vector<size_t> sizes,
+                     vector<vector<db_key_t> > non_terminal_nodes,
+                     const char *terminal_nodes);
   void sizes(string filename, int fd, off_t &fp, vector<size_t> &sizes, size_t &height);
   void binary_search(string filename,
                      int fd,
