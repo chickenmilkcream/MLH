@@ -211,6 +211,9 @@ db_val_t KeyValueStore::get(db_key_t key, search_alg alg)
                         high = mid - 1;
                     } else {
                         db_key_t val = ((pair<db_key_t, db_val_t> *) buf)[mid].second;
+                        if (val == DB_TOMBSTONE) {
+                            throw invalid_argument("Key not found");
+                        }
                         return val;
                     }
                 }
@@ -341,6 +344,7 @@ void KeyValueStore::write_to_file(const char *filename,
                                   vector<vector<db_key_t> > non_terminal_nodes,
                                   vector<pair<db_key_t, db_val_t> > terminal_nodes)
 {
+    // cout << "writing..." << filename << endl;
     int fd = open(filename,
                   O_WRONLY | O_DIRECT | O_SYNC | O_TRUNC | O_CREAT,
                   S_IRUSR | S_IWUSR);
@@ -373,6 +377,7 @@ void KeyValueStore::write_to_file(const char *filename,
                                   vector<vector<db_key_t> > non_terminal_nodes,
                                   const char *terminal_nodes)
 {
+    // cout << "writing..." << filename << endl;
     int fd = open(filename,
                   O_WRONLY | O_DIRECT | O_SYNC | O_TRUNC | O_CREAT,
                   S_IRUSR | S_IWUSR);
@@ -410,6 +415,10 @@ void KeyValueStore::write_to_file(const char *filename,
 // for debugging
 void KeyValueStore::read_from_file(const char *filename)
 {
+    if (!exists(filename)) {
+        throw invalid_argument("File not found");
+    }
+
     vector<size_t> sizes;
     vector<vector<db_key_t> > non_terminal_nodes;
     vector<pair<db_key_t, db_val_t> > terminal_nodes;
@@ -579,8 +588,11 @@ void KeyValueStore::compact_files_first_pass(vector<string> filenames,
             }
         }
 
+        size_t lvl = stoi(filenames[0].substr(4, filenames[0].find(".2.bin")));
+
         // write minimum key to output buffer
-        if ((offset_out - start_out == 0 || min_key != min_key_prev) && val != DB_TOMBSTONE) {
+        if ((offset_out - start_out == 0 || min_key != min_key_prev) &&
+            (lvl < DB_MAX_LEVEL || val != DB_TOMBSTONE)) {
             ((pair<db_key_t, db_val_t> *) buf_out)[(offset_out - fp_out) / DB_PAIR_SIZE] = make_pair(min_key, val);
             offset_out += DB_PAIR_SIZE;
         }
@@ -657,7 +669,9 @@ void KeyValueStore::compact_files_second_pass(vector<string> filenames,
 
     size_t lvl = stoi(filenames[0].substr(4, filenames[0].find(".2.bin")));
     if (exists("sst." + to_string(lvl + 1) + ".1.bin")) {
+        cout << "sst." + to_string(lvl + 1) + ".1.bin exists" << endl;
         const char *filename = ("sst." + to_string(lvl + 1) + ".2.bin").c_str();
+        cout << "compacting into " << filename << endl;
         this->write_to_file(filename, sizes, non_terminal_nodes, terminal_nodes);
 
         remove("temp");
@@ -669,6 +683,7 @@ void KeyValueStore::compact_files_second_pass(vector<string> filenames,
         this->compact_files(filenames);
     } else {
         const char *filename = ("sst." + to_string(lvl + 1) + ".1.bin").c_str();
+        cout << "compacting into " << filename << endl;
         this->write_to_file(filename, sizes, non_terminal_nodes, terminal_nodes);
 
         remove("temp");
@@ -721,12 +736,14 @@ void KeyValueStore::serialize()
 
     if (exists("sst.1.1.bin")) {
         const char *filename = "sst.1.2.bin";
+        cout << "serializing into " << filename << endl;
         this->write_to_file(filename, sizes, non_terminal_nodes, terminal_nodes);
 
         vector<string> filenames = {"sst.1.2.bin", "sst.1.1.bin"}; // newest to oldest
         this->compact_files(filenames);
     } else {
         const char *filename = "sst.1.1.bin";
+        cout << "serializing into " << filename << endl;
         this->write_to_file(filename, sizes, non_terminal_nodes, terminal_nodes);
     }
 }
