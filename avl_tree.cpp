@@ -50,17 +50,17 @@ void AVLTree::scan(db_key_t min_key, db_key_t max_key,
   }
 }
 
-void AVLTree::del(db_key_t key)
-{
-  if (this->root)
-  {
-    this->root = this->root->del(key);
-  }
-  else
-  {
-    throw invalid_argument("Key not found");
-  }
-}
+// void AVLTree::del(db_key_t key)
+// {
+//   if (this->root)
+//   {
+//     this->root = this->root->del(key);
+//   }
+//   else
+//   {
+//     throw invalid_argument("Key not found");
+//   }
+// }
 
 void AVLTree::print()
 {

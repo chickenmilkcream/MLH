@@ -5,6 +5,7 @@
 #include <unistd.h>
 #include <vector>
 #include <stdio.h>
+#include <sys/stat.h>
 
 #include "kv_store.h"
 
@@ -16,6 +17,11 @@ long nceil(long x, long n) {
 
 long nfloor(long x, long n) {
     return floor((double) x / n) * n;
+}
+
+bool exists(string filename) {
+    struct stat sb;
+    return stat(filename.c_str(), &sb) == 0;
 }
 
 ssize_t aligned_pwrite(int fd, const void *buf, size_t n, off_t fp) {
@@ -45,10 +51,8 @@ KeyValueStore::KeyValueStore(size_t memtable_size,
                              int maximum_num_items_threshold)
 {
     this->memtable = Memtable(memtable_size);
-    this->buffer_pool = BPDirectory(eviction_policy, initial_num_bits, maximum_bp_size, maximum_num_items_threshold);
-
-    this->sst_count = 1;
     this->memtable_size = memtable_size;
+    this->buffer_pool = BPDirectory(eviction_policy, initial_num_bits, maximum_bp_size, maximum_num_items_threshold);
 }
 
 void KeyValueStore::bpread(string filename, int fd, void *buf, off_t fp) {
@@ -156,49 +160,59 @@ db_val_t KeyValueStore::get(db_key_t key, search_alg alg)
 {    
     size_t b = PAGE_SIZE / DB_PAIR_SIZE; // number of key-value pairs per page
 
+    bool deleted = false;
     try {
         // Try to look in the memtable for the key
         db_key_t val = this->memtable.get(key);
+        if (val == DB_TOMBSTONE) {
+            deleted = true;
+        }
         return val;
     } catch (invalid_argument &e) {
+        if (deleted) {
+            throw invalid_argument("Key not found");
+        }
+
         // Couldn't find it in the memtable
         // Loop through the SSTs from latest to oldest
-        for (size_t i = this->sst_count - 1; i > 0; i--) {
-            const char *filename = ("sst_" + to_string(i) + ".bin").c_str();
-            int fd = open(filename, O_RDONLY | O_DIRECT | O_SYNC);
-            off_t start = 0;
-            off_t fp = 0;
+        for (size_t i = 1; i < DB_MAX_LEVEL; i++) {
+            string filename = "sst." + to_string(i) + ".1.bin";
+            if (exists(filename)) {
+                int fd = open(filename.c_str(), O_RDONLY | O_DIRECT | O_SYNC);
+                off_t start = 0;
+                off_t fp = 0;
 
-            vector<size_t> sizes;
-            size_t height;
-            this->sizes(filename, fd, fp, sizes, height);
+                vector<size_t> sizes;
+                size_t height;
+                this->sizes(filename, fd, fp, sizes, height);
 
-            if (alg == search_alg::binary_search) {
-                this->binary_search(filename, fd, key, sizes, height, start, fp);
-            } else if (alg == search_alg::b_tree_search) {
-                this->b_tree_search(filename, fd, key, sizes, height, start, fp);
-            } else {
-                close(fd);
-                throw invalid_argument("Search algorithm not found");
-            }
-
-            char buf[PAGE_SIZE];
-            this->bpread(filename, fd, buf, fp);
-            close(fd);
-
-            // binary search in memory
-            ssize_t low = 0;
-            ssize_t high = min(b, sizes[height - 1] - (fp - start) / DB_PAIR_SIZE) - 1;
-
-            while (low <= high) {
-                ssize_t mid = (low + high) / 2;
-                if (((pair<db_key_t, db_val_t> *) buf)[mid].first < key) {
-                    low = mid + 1;
-                } else if (((pair<db_key_t, db_val_t> *) buf)[mid].first > key) {
-                    high = mid - 1;
+                if (alg == search_alg::binary_search) {
+                    this->binary_search(filename, fd, key, sizes, height, start, fp);
+                } else if (alg == search_alg::b_tree_search) {
+                    this->b_tree_search(filename, fd, key, sizes, height, start, fp);
                 } else {
-                    db_key_t val = ((pair<db_key_t, db_val_t> *) buf)[mid].second;
-                    return val;
+                    close(fd);
+                    throw invalid_argument("Search algorithm not found");
+                }
+
+                char buf[PAGE_SIZE];
+                this->bpread(filename, fd, buf, fp);
+                close(fd);
+
+                // binary search in memory
+                ssize_t low = 0;
+                ssize_t high = min(b, sizes[height - 1] - (fp - start) / DB_PAIR_SIZE) - 1;
+
+                while (low <= high) {
+                    ssize_t mid = (low + high) / 2;
+                    if (((pair<db_key_t, db_val_t> *) buf)[mid].first < key) {
+                        low = mid + 1;
+                    } else if (((pair<db_key_t, db_val_t> *) buf)[mid].first > key) {
+                        high = mid - 1;
+                    } else {
+                        db_key_t val = ((pair<db_key_t, db_val_t> *) buf)[mid].second;
+                        return val;
+                    }
                 }
             }
         }
@@ -218,13 +232,12 @@ void KeyValueStore::put(db_key_t key, db_val_t val)
     if (this->memtable.size + DB_PAIR_SIZE > this->memtable.max_size)
     {
         this->serialize();
-        this->sst_count++;
     }
 }
 
 void KeyValueStore::del(db_key_t key)
 {
-    this->memtable.del(key);
+    this->memtable.put(key, DB_TOMBSTONE);
 }
 
 vector<pair<db_key_t, db_val_t> > KeyValueStore::scan(db_key_t min_key, db_key_t max_key, search_alg alg)
@@ -238,7 +251,7 @@ vector<pair<db_key_t, db_val_t> > KeyValueStore::scan(db_key_t min_key, db_key_t
     vector<pair<db_key_t, db_val_t> > pairs = this->memtable.scan(min_key, max_key);
     
     // Loop through the SSTs from latest to oldest
-    for (size_t i = this->sst_count - 1; i > 0; i--) {
+    for (size_t i = 1; i > 0; i--) {
         const char *filename = ("sst_" + to_string(i) + ".bin").c_str();
         int fd = open(filename, O_RDONLY | O_DIRECT | O_SYNC);
         off_t start = 0;
@@ -461,31 +474,31 @@ void KeyValueStore::read_from_file(const char *filename)
     cout << "]" << endl;
 }
 
-void KeyValueStore::compact_files(vector<const char *> filenames) // filenames are ordered from NEWEST to OLDEST
+void KeyValueStore::compact_files(vector<string> filenames) // filenames are ordered from NEWEST to OLDEST
 {
     size_t size;
     vector<db_key_t> fence_keys;
     this->compact_files_first_pass(filenames, size, fence_keys);
-    this->compact_files_second_pass(size, fence_keys);
+    this->compact_files_second_pass(filenames, size, fence_keys);
 }
 
 // first pass does compaction
-void KeyValueStore::compact_files_first_pass(vector<const char *> filenames,
+void KeyValueStore::compact_files_first_pass(vector<string> filenames,
                                              size_t &size,
                                              vector<db_key_t> &fence_keys)
 {
     size_t b = PAGE_SIZE / DB_PAIR_SIZE; // number of key-value pairs per page
 
     // input buffers
-    char buf_in[SIZE_RATIO][PAGE_SIZE];
+    char buf_in[2][PAGE_SIZE];
     
     // output buffer
     char buf_out[PAGE_SIZE];
 
     // open input files
-    int fd_in[SIZE_RATIO];
-    for (size_t i = 0; i < SIZE_RATIO; i++) {
-        fd_in[i] = open(filenames[i], O_RDONLY | O_DIRECT | O_SYNC);
+    int fd_in[2];
+    for (size_t i = 0; i < 2; i++) {
+        fd_in[i] = open(filenames[i].c_str(), O_RDONLY | O_DIRECT | O_SYNC);
     }
 
     // open output file
@@ -494,20 +507,20 @@ void KeyValueStore::compact_files_first_pass(vector<const char *> filenames,
                       S_IRUSR | S_IWUSR);
 
     // offset of terminal nodes in input files
-    off_t start_in[SIZE_RATIO];
+    off_t start_in[2];
 
     // offset of terminal nodes in output file
     off_t start_out = 0;
 
     // page-aligned offsets in input files for reads/writes
-    off_t fp_in[SIZE_RATIO] = {0};
+    off_t fp_in[2] = {0};
 
     // page-aligned offset in output file for reads/writes
     off_t fp_out = 0;
 
-    vector<size_t> sizes[SIZE_RATIO];
-    size_t height[SIZE_RATIO];
-    for (size_t i = 0; i < SIZE_RATIO; i++) {
+    vector<size_t> sizes[2];
+    size_t height[2];
+    for (size_t i = 0; i < 2; i++) {
         this->sizes(filenames[i], fd_in[i], fp_in[i], sizes[i], height[i]);
         start_in[i] = fp_in[i];
         for (size_t j = 0; j < height[i] - 1; j++) {
@@ -517,14 +530,14 @@ void KeyValueStore::compact_files_first_pass(vector<const char *> filenames,
     }
 
     // similar to fp_in, but not necessarily page-aligned
-    off_t offset_in[SIZE_RATIO];
-    memcpy(offset_in, start_in, SIZE_RATIO * sizeof(off_t));
+    off_t offset_in[2];
+    memcpy(offset_in, start_in, 2 * sizeof(off_t));
 
     // similar to fp_out, but not necessarily page-aligned
     off_t offset_out = start_out;
 
     // read pages from input files into input buffers
-    for (size_t i = 0; i < SIZE_RATIO; i++) {
+    for (size_t i = 0; i < 2; i++) {
         this->bpread(filenames[i], fd_in[i], buf_in[i], fp_in[i]);
         fp_in[i] += PAGE_SIZE;
     }
@@ -532,11 +545,11 @@ void KeyValueStore::compact_files_first_pass(vector<const char *> filenames,
     db_key_t min_key_prev;
     while (true) {
         size_t i = 0;
-        while (i < SIZE_RATIO && (offset_in[i] - start_in[i]) / DB_PAIR_SIZE == sizes[i][height[i] - 1]) {
+        while (i < 2 && (offset_in[i] - start_in[i]) / DB_PAIR_SIZE == sizes[i][height[i] - 1]) {
             // i-th file has been fully read
             i++;
         }
-        if (i == SIZE_RATIO) {
+        if (i == 2) {
             // write output buffer to page in output file, if not empty
             if ((offset_out - fp_out) / DB_PAIR_SIZE < b) {
                 aligned_pwrite(fd_out, buf_out, PAGE_SIZE, fp_out);
@@ -549,7 +562,7 @@ void KeyValueStore::compact_files_first_pass(vector<const char *> filenames,
         // read minimum key from input buffers
         db_key_t min_key = ((pair<db_key_t, db_val_t> *) buf_in[i])[(offset_in[i] - fp_in[i] + PAGE_SIZE) / DB_PAIR_SIZE].first;
         db_val_t val = ((pair<db_key_t, db_val_t> *) buf_in[i])[(offset_in[i] - fp_in[i] + PAGE_SIZE) / DB_PAIR_SIZE].second;
-        for (size_t j = i + 1; j < SIZE_RATIO; j++) {
+        for (size_t j = i + 1; j < 2; j++) {
             if ((offset_in[j] - start_in[j]) / DB_PAIR_SIZE < sizes[j][height[j] - 1]) {
                 // j-th file has NOT been fully read yet
                 db_key_t key = ((pair<db_key_t, db_val_t> *) buf_in[j])[(offset_in[j] - fp_in[j] + PAGE_SIZE) / DB_PAIR_SIZE].first;
@@ -588,9 +601,9 @@ void KeyValueStore::compact_files_first_pass(vector<const char *> filenames,
     size = offset_out / DB_PAIR_SIZE;
 
     // close input files
-    for (size_t i = 0; i < SIZE_RATIO; i++) {
+    for (size_t i = 0; i < 2; i++) {
         close(fd_in[i]);
-        remove(filenames[i]);
+        remove(filenames[i].c_str());
     }
 
     // close output file
@@ -598,7 +611,8 @@ void KeyValueStore::compact_files_first_pass(vector<const char *> filenames,
 }
 
 // second pass does B-tree reconstruction
-void KeyValueStore::compact_files_second_pass(size_t size,
+void KeyValueStore::compact_files_second_pass(vector<string> filenames,
+                                              size_t size,
                                               vector<db_key_t> fence_keys)
 {
     size_t b = PAGE_SIZE / DB_PAIR_SIZE; // number of key-value pairs per page
@@ -636,12 +650,24 @@ void KeyValueStore::compact_files_second_pass(size_t size,
     sizes.push_back(size);
     sizes.push_back(0); // write null terminator
 
-    const char *filename = "sst_1.bin"; // TODO: what to call this
-    this->write_to_file(filename, sizes, non_terminal_nodes, terminal_nodes);
-    remove("temp");
+    size_t lvl = stoi(filenames[0].substr(4, filenames[0].find(".2.bin")));
+    if (exists("sst." + to_string(lvl + 1) + ".1.bin")) {
+        const char *filename = ("sst." + to_string(lvl + 1) + ".2.bin").c_str();
+        this->write_to_file(filename, sizes, non_terminal_nodes, terminal_nodes);
 
-    // TODO: remove
-    this->sst_count = 2;
+        remove("temp");
+
+        vector<string> filenames = {
+            "sst." + to_string(lvl + 1) + ".2.bin",
+            "sst." + to_string(lvl + 1) + ".1.bin"
+        }; // newest to oldest
+        this->compact_files(filenames);
+    } else {
+        const char *filename = ("sst." + to_string(lvl + 1) + ".1.bin").c_str();
+        this->write_to_file(filename, sizes, non_terminal_nodes, terminal_nodes);
+
+        remove("temp");
+    }
 }
 
 void KeyValueStore::serialize()
@@ -688,6 +714,14 @@ void KeyValueStore::serialize()
     sizes.push_back(terminal_nodes.size());
     sizes.push_back(0); // write null terminator
 
-    const char *filename = ("sst_" + to_string(this->sst_count) + ".bin").c_str();
-    this->write_to_file(filename, sizes, non_terminal_nodes, terminal_nodes);
+    if (exists("sst.1.1.bin")) {
+        const char *filename = "sst.1.2.bin";
+        this->write_to_file(filename, sizes, non_terminal_nodes, terminal_nodes);
+
+        vector<string> filenames = {"sst.1.2.bin", "sst.1.1.bin"}; // newest to oldest
+        this->compact_files(filenames);
+    } else {
+        const char *filename = "sst.1.1.bin";
+        this->write_to_file(filename, sizes, non_terminal_nodes, terminal_nodes);
+    }
 }

@@ -8,9 +8,9 @@
 #include "bp_directory.h"
 
 #define PAGE_SIZE 4096 // must be 4096 for direct I/O
-#define SIZE_RATIO 2
 
 #define DB_TOMBSTONE INT64_MIN
+#define DB_MAX_LEVEL 128
 
 using namespace std;
 
@@ -32,19 +32,13 @@ public:
                                          search_alg alg = search_alg::b_tree_search);
   void read_from_file(const char *filename);
   void print();
-  void compact_files(vector<const char *> filenames);
-  void compact_files_first_pass(vector<const char *> filenames,
-                                size_t &size,
-                                vector<db_key_t> &fence_keys);
-  void compact_files_second_pass(size_t size, vector<db_key_t> fence_keys);
 
 private:
   Memtable memtable;
-  size_t sst_count;
   size_t memtable_size;
   
-  void serialize();
   void bpread(string filename, int fd, void *buf, off_t fp);
+  void serialize();
   void write_to_file(const char *filename,
                      vector<size_t> sizes,
                      vector<vector<db_key_t> > non_terminal_nodes,
@@ -53,6 +47,13 @@ private:
                      vector<size_t> sizes,
                      vector<vector<db_key_t> > non_terminal_nodes,
                      const char *terminal_nodes);
+  void compact_files(vector<string> filenames);
+  void compact_files_first_pass(vector<string> filenames,
+                                size_t &size,
+                                vector<db_key_t> &fence_keys);
+  void compact_files_second_pass(vector<string> filenames,
+                                 size_t size,
+                                 vector<db_key_t> fence_keys);
   void sizes(string filename, int fd, off_t &fp, vector<size_t> &sizes, size_t &height);
   void binary_search(string filename,
                      int fd,
@@ -67,7 +68,7 @@ private:
                      vector<size_t> sizes,
                      size_t height,
                      off_t &start,
-                     off_t &fp);
+                     off_t &fp);  
 };
 
 #endif

@@ -24,29 +24,29 @@ int main(int argc, char *argv[])
      * 4096 / 8 = 512 keys (for non-terminal nodes)
      */
     // size_t n = 256 + 1; // height 2
-    size_t n = 256 * (256 + 1) + 1; // height 2
+    size_t n = 256 * (256 + 1); // height 2
     // size_t n = 256 * (256 + 1) + 1; // height 3
     // size_t n = 256 * (256 * (256 + 1) + 1) + 1; // height 4
 
     // KeyValueStore db = KeyValueStore(n * DB_PAIR_SIZE + 1, eviction_policy, initial_num_bits, maximum_bp_size, maximum_num_items_threshold); // writes zero SSTs (all in memory)
     // KeyValueStore db = KeyValueStore(n * DB_PAIR_SIZE, eviction_policy, initial_num_bits, maximum_bp_size, maximum_num_items_threshold); // writes one SST
     // KeyValueStore db = KeyValueStore(n * DB_PAIR_SIZE / 2, eviction_policy, initial_num_bits, maximum_bp_size, maximum_num_items_threshold); // writes two SSTs (+ some in memory)
-    KeyValueStore db = KeyValueStore(256 * DB_PAIR_SIZE, eviction_policy, initial_num_bits, maximum_bp_size, maximum_num_items_threshold); // writes two SSTs (+ some in memory)
+    
+    KeyValueStore db = KeyValueStore(4096 * DB_PAIR_SIZE, eviction_policy, initial_num_bits, maximum_bp_size, maximum_num_items_threshold); // writes n / 4096 SSTs
 
 
-    for (int i = 0; i < 515; i++) {
+    for (int i = 0; i < n; i++) {
         db.put(i, i);
     }
 
-    db.compact_files({"sst_1.bin", "sst_2.bin"});
-    db.read_from_file("sst_1.bin");
+    db.read_from_file("sst.5.1.bin");
 
-    // for (int i = 0; i < n; i++) {
-    //     db.get(i);
-    //     if (i > 0 && i % 1000 == 0) {
-    //         cout << "Tested " << i << " get operations so far..." << endl;
-    //     }
-    // }
+    for (int i = 0; i < n; i++) {
+        db.get(i);
+        if (i > 0 && i % 1000 == 0) {
+            cout << "Tested " << i << " get operations so far..." << endl;
+        }
+    }
 
     db.close_db();
     /* ==================== B-TREE GET, PUT, SCAN TESTS ==================== */
