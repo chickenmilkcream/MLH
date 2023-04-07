@@ -141,6 +141,33 @@ shared_ptr<AVLNode> AVLNode::put(db_key_t key, db_val_t val)
 }
 
 void AVLNode::scan(db_key_t min_key, db_key_t max_key,
+                   vector<pair<db_key_t, db_val_t> > &pairs, set<db_key_t> *deleted_keys)
+{
+  if (this->key > min_key)
+  {
+    if (this->left)
+    {
+      this->left->scan(min_key, max_key, pairs, deleted_keys);
+    }
+  }
+  if (this->key >= min_key && this->key <= max_key && this->val != DB_TOMBSTONE && !deleted_keys->count(this->key))
+  {
+    pair<db_key_t, db_val_t> pair;
+    pair = make_pair(this->key, this->val);
+    pairs.push_back(pair);
+  } else if (this->key >= min_key && this->key <= max_key && this->val == DB_TOMBSTONE) {
+    deleted_keys->insert(this->key);
+  }
+  if (this->key < max_key)
+  {
+    if (this->right)
+    {
+      this->right->scan(min_key, max_key, pairs, deleted_keys);
+    }
+  }
+}
+
+void AVLNode::scan(db_key_t min_key, db_key_t max_key,
                    vector<pair<db_key_t, db_val_t> > &pairs)
 {
   if (this->key > min_key)

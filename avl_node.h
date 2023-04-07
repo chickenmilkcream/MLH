@@ -3,9 +3,11 @@
 
 #include <memory>
 #include <vector>
+#include <set>
 
 #define DB_KEY_MIN INT64_MIN
 #define DB_KEY_MAX INT64_MAX
+#define DB_TOMBSTONE INT64_MIN
 
 using namespace std;
 
@@ -27,7 +29,9 @@ public:
   db_val_t get(db_key_t key);
   shared_ptr<AVLNode> put(db_key_t key, db_val_t val);
   void scan(db_key_t min_key, db_key_t max_key,
-            vector<pair<db_key_t, db_val_t> > &pairs);
+          vector<pair<db_key_t, db_val_t> > &pairs);
+  void scan(db_key_t min_key, db_key_t max_key,
+            vector<pair<db_key_t, db_val_t> > &pairs, set<db_key_t> *deleted_keys);
   // shared_ptr<AVLNode> del(db_key_t key);
   void print(string prefix, bool is_left);
 

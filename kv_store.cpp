@@ -6,6 +6,9 @@
 #include <vector>
 #include <stdio.h>
 #include <sys/stat.h>
+#include <fstream>
+#include <set>
+#include <filesystem>
 
 #include "kv_store.h"
 
@@ -160,19 +163,14 @@ db_val_t KeyValueStore::get(db_key_t key, search_alg alg)
 {    
     size_t b = PAGE_SIZE / DB_PAIR_SIZE; // number of key-value pairs per page
 
-    bool deleted = false;
     try {
         // Try to look in the memtable for the key
         db_key_t val = this->memtable.get(key);
         if (val == DB_TOMBSTONE) {
-            deleted = true;
+            throw invalid_argument("Key not found");
         }
         return val;
     } catch (invalid_argument &e) {
-        if (deleted) {
-            throw invalid_argument("Key not found");
-        }
-
         // Couldn't find it in the memtable
         // Loop through the SSTs from latest to oldest
         for (size_t i = 1; i < DB_MAX_LEVEL; i++) {
@@ -251,17 +249,18 @@ void KeyValueStore::del(db_key_t key)
 vector<pair<db_key_t, db_val_t> > KeyValueStore::scan(db_key_t min_key, db_key_t max_key, search_alg alg)
 {
     size_t b = PAGE_SIZE / DB_PAIR_SIZE; // number of key-value pairs per page
+    set<db_key_t> deleted_keys;
 
     if (min_key > max_key) {
         return {};
     }
-
-    vector<pair<db_key_t, db_val_t> > pairs = this->memtable.scan(min_key, max_key);
+    vector<pair<db_key_t, db_val_t> > pairs = this->memtable.scan(min_key, max_key, &deleted_keys);
     
     // Loop through the SSTs from latest to oldest
-    for (size_t i = 1; i > 0; i--) {
-        const char *filename = ("sst_" + to_string(i) + ".bin").c_str();
+    for (int i = 1; i < DB_MAX_LEVEL; i++) {
+        const char *filename = ("sst." + to_string(i) + ".1.bin").c_str();
         int fd = open(filename, O_RDONLY | O_DIRECT | O_SYNC);
+        if (fd == -1) continue;
         off_t start = 0;
         off_t fp = 0;
 
@@ -301,7 +300,13 @@ vector<pair<db_key_t, db_val_t> > KeyValueStore::scan(db_key_t min_key, db_key_t
         size_t k = j;
         while (k < min(b, sizes[height - 1] - (fp - PAGE_SIZE - start) / DB_PAIR_SIZE) &&
                ((pair<db_key_t, db_val_t> *) buf)[k].first <= max_key) {
-            pairs.push_back(((pair<db_key_t, db_val_t> *) buf)[k]);
+            db_key_t curr_key = ((pair<db_key_t, db_val_t> *) buf)[k].first;
+            db_key_t curr_val = ((pair<db_key_t, db_val_t> *) buf)[k].second;
+            if (curr_val == DB_TOMBSTONE) {
+                deleted_keys.insert(curr_key);
+            } else if (!deleted_keys.count(curr_key)) {
+                pairs.push_back(((pair<db_key_t, db_val_t> *) buf)[k]);
+            }
             k++;
             if (k == b) {
                 this->bpread(filename, fd, buf, fp);
@@ -745,5 +750,16 @@ void KeyValueStore::serialize()
         const char *filename = "sst.1.1.bin";
         cout << "serializing into " << filename << endl;
         this->write_to_file(filename, sizes, non_terminal_nodes, terminal_nodes);
+    }
+}
+
+void KeyValueStore::delete_sst_files() {
+    const std::string path = std::filesystem::current_path().string();
+    for (const auto& entry : std::filesystem::directory_iterator(path)) {
+        const std::string& filename = entry.path().filename().string();
+        if (filename.size() > 7 && filename.substr(0, 3) == "sst" && filename.substr(filename.size() - 4) == ".bin") {
+            std::filesystem::remove(entry.path());
+            std::cout << "Deleted file: " << filename << std::endl;
+        }
     }
 }

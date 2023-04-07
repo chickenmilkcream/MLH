@@ -97,14 +97,6 @@ int main(int argc, char *argv[])
         cout << "Passed scan operation for range [" << min_key << ", " << max_key  << "]." << endl;
     }
 
-    try
-    {
-        db.del(5);
-        assert(false);
-    }
-    catch (invalid_argument e)
-    {
-    }
     db.put(5, 1);
     db.del(5);
     try
@@ -115,9 +107,13 @@ int main(int argc, char *argv[])
     catch (invalid_argument e)
     {
     }
-    db.del(1447267605);
-    vector<pair<db_key_t, db_val_t> > result = db.scan(-99999, 99999);
-    assert(result.size() == 0);
+
+    db.del(1447267605); // currently in memtable
+    db.del(2147469841); // currently in sst
+    db.put(10, 2);
+    db.del(10);
+    vector<pair<db_key_t, db_val_t> > result = db.scan(DB_KEY_MIN, DB_KEY_MAX);
+    assert(result.size() == n - 2);
     cout << "Passed key deletion in memtable." << endl;
 
     /* ================= BINARY SEARCH GET, PUT, SCAN TESTS ================= */

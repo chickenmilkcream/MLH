@@ -3,6 +3,7 @@
 
 #include <cstdint>
 #include <string>
+#include <filesystem>
 
 #include "memtable.h"
 #include "bp_directory.h"
@@ -32,6 +33,7 @@ public:
                                          search_alg alg = search_alg::b_tree_search);
   void read_from_file(const char *filename);
   void print();
+  void delete_sst_files();
 
 private:
   Memtable memtable;
