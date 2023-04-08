@@ -506,16 +506,20 @@ void KeyValueStore::compact_files(vector<string> filenames) // filenames are ord
 {
     size_t size;
     vector<db_key_t> fence_keys;
-    this->compact_files_first_pass(filenames, size, fence_keys);
-    this->compact_files_second_pass(filenames, size, fence_keys);
+
+    auto bf = make_shared<BloomFilter>("filename", 0, 5);
+    this->compact_files_first_pass(filenames, size, fence_keys, bf);
+    this->compact_files_second_pass(filenames, size, fence_keys, bf);
+    this->buffer_pool.insert_bloom_filter(bf);
 }
 
 // first pass does compaction
-void KeyValueStore::compact_files_first_pass(vector<string> filenames,
-                                             size_t &size,
-                                             vector<db_key_t> &fence_keys)
+void KeyValueStore::compact_files_first_pass(vector<string> filenames, size_t &size, vector<db_key_t> &fence_keys,
+                                             shared_ptr<BloomFilter> bf)
 {
     size_t b = PAGE_SIZE / DB_PAIR_SIZE; // number of key-value pairs per page
+
+    bf->set_parameters(b, 5);
 
     // input buffers
     char buf_in[2][PAGE_SIZE];
@@ -581,6 +585,11 @@ void KeyValueStore::compact_files_first_pass(vector<string> filenames,
         if (i == 2) {
             // write output buffer to page in output file, if not empty
             if ((offset_out - fp_out) / DB_PAIR_SIZE < b) {
+                // print out the buf_out
+                for (size_t j = 0; j < (offset_out - fp_out) / DB_PAIR_SIZE; j++) {
+                    cout << "inserting 1 " << ((pair<db_key_t, db_val_t> *) buf_out)[j].first << endl;
+                    bf->insert(((pair<db_key_t, db_val_t> *) buf_out)[j].first);
+                }
                 aligned_pwrite(fd_out, buf_out, PAGE_SIZE, fp_out);
             } else {
                 fence_keys.pop_back();
@@ -625,6 +634,9 @@ void KeyValueStore::compact_files_first_pass(vector<string> filenames,
 
         if ((offset_out - fp_out) / DB_PAIR_SIZE == b) {
             // write output buffer to page in output file
+            for (size_t j = 0; j < (offset_out - fp_out) / DB_PAIR_SIZE; j++) {
+                bf->insert(((pair<db_key_t, db_val_t> *) buf_out)[j].first);
+            }
             aligned_pwrite(fd_out, buf_out, PAGE_SIZE, fp_out);
             fp_out += PAGE_SIZE;
             fence_keys.push_back(((pair<db_key_t, db_val_t> *) buf_out)[b - 1].first);
@@ -646,9 +658,8 @@ void KeyValueStore::compact_files_first_pass(vector<string> filenames,
 }
 
 // second pass does B-tree reconstruction
-void KeyValueStore::compact_files_second_pass(vector<string> filenames,
-                                              size_t size,
-                                              vector<db_key_t> fence_keys)
+void KeyValueStore::compact_files_second_pass(vector<string> filenames, size_t size, vector<db_key_t> fence_keys,
+                                              shared_ptr<BloomFilter> bf)
 {
     size_t b = PAGE_SIZE / DB_PAIR_SIZE; // number of key-value pairs per page
 
@@ -701,6 +712,7 @@ void KeyValueStore::compact_files_second_pass(vector<string> filenames,
     } else {
         const char *filename = ("sst." + to_string(lvl + 1) + ".1.bin").c_str();
         cout << "compacting into " << filename << endl;
+        bf->set_sst_name(filename);
         this->write_to_file(filename, sizes, non_terminal_nodes, terminal_nodes);
         remove("temp");
     }

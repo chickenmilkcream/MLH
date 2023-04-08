@@ -61,6 +61,16 @@ void BloomFilter::read_from_file(string filename) {
 
 }
 
+void BloomFilter::set_sst_name(string filename) {
+    this->sst_name = std::move(filename);
+}
+
+void BloomFilter::set_parameters(uint32_t num_bits, uint32_t num_hash_functions) {
+    this->num_bits = num_bits;
+    this->num_hash_functions = num_hash_functions;
+    bit_array.resize(num_bits, false);
+}
+
 
 //int main() {
 //    BloomFilter filter(10000, 7, "gg", 2);

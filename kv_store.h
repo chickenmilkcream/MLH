@@ -52,12 +52,10 @@ private:
                      vector<vector<db_key_t> > non_terminal_nodes,
                      const char *terminal_nodes);
   void compact_files(vector<string> filenames);
-  void compact_files_first_pass(vector<string> filenames,
-                                size_t &size,
-                                vector<db_key_t> &fence_keys);
-  void compact_files_second_pass(vector<string> filenames,
-                                 size_t size,
-                                 vector<db_key_t> fence_keys);
+  void compact_files_first_pass(vector<string> filenames, size_t &size, vector<db_key_t> &fence_keys,
+                                shared_ptr<BloomFilter> bf);
+  void compact_files_second_pass(vector<string> filenames, size_t size, vector<db_key_t> fence_keys,
+                                 shared_ptr<BloomFilter> bf);
   void sizes(string filename, int fd, off_t &fp, vector<size_t> &sizes, size_t &height);
   void binary_search(string filename,
                      int fd,
