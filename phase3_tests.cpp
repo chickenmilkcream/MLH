@@ -104,6 +104,9 @@ int main(int argc, char *argv[])
     assert(db.scan(-1, 4).size() == 2); // 0, 2
     db.del(2);
     assert(db.scan(-1, 4).size() == 1); // 0
+
+
+    cout << "\n\n\nk everything passes now don't touch the code or we might break something uwu\n\n\n\n" << endl;
 }
 
 

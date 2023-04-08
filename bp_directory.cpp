@@ -123,19 +123,31 @@ void BPDirectory::set_maximum_bp_size(int value)
     evict_until_under_max_bp_size();
 }
 
-void BPDirectory::insert_page(void *page_content, int num_pairs_in_page, string sst_name, int page_number)
+void
+BPDirectory::insert_page(void *page_content, int num_pairs_in_page, string sst_name, int page_number)
 {
     string source = sst_name + to_string(page_number);
     string directory_key = this->hash_string(source);
+
+
     this->current_bp_size += PAGE_SIZE;
 
-//    cout << "mallocing page" << endl;
+
+    cout << "mallocing page" << endl;
     // Malloc memory for the page
-    void *malloc_page = malloc(PAGE_SIZE);
+    cout << "malloc page for bloom filter" << endl;
+    void *malloc_page;
+
+
+    malloc_page = malloc(PAGE_SIZE);
     memcpy(malloc_page, page_content, PAGE_SIZE);
 
-//    cout << "adding page frame" << endl;
-    shared_ptr<PageFrame> newNode = this->directory[directory_key]->add_page_frame(malloc_page, num_pairs_in_page, sst_name, page_number);    
+
+    cout << "adding page frame bloom filter" << endl;
+
+
+    shared_ptr<PageFrame> newNode = this->directory[directory_key]->add_page_frame(malloc_page, num_pairs_in_page,
+                                                                                   sst_name, page_number);
     this->current_num_items += 1;
     this->page_id += 1;
     newNode->set_id(this->page_id);
@@ -209,6 +221,7 @@ shared_ptr<PageFrame> BPDirectory::get_page(string sst_name, int page_number)
     return pageFrame;
 }
 
+
 void BPDirectory::extend_directory()
 {
     this->current_num_bits ++;
@@ -256,7 +269,8 @@ void BPDirectory::evict_pages_associated_with_files(size_t memtable_size, vector
                 string source = filename + to_string(page_number);
                 string directory_key = this->hash_string(source);
                 try {
-                    shared_ptr<PageFrame> pageFrame = this->directory[directory_key]->find_page_frame(filename, page_number);
+                    shared_ptr<PageFrame> pageFrame = this->directory[directory_key]->find_page_frame(filename,
+                                                                                                      page_number);
                     this->directory[directory_key]->remove_page_frame(pageFrame);
                 } catch (out_of_range &e) {
                     continue;
@@ -319,9 +333,11 @@ void BPDirectory::rehash_linked_list(map<string, shared_ptr<BPLinkedList> > *dir
         string source = current->sst_name + to_string(current->page_number);
         string directory_key = this->hash_string(source);
         if (key_to_new_linkedlist.find(directory_key) == key_to_new_linkedlist.end()) {
-            (*directory)[directory_key]->add_page_frame(current->page_content, current->num_pairs_in_page, current->sst_name, current->page_number);
+            (*directory)[directory_key]->add_page_frame(current->page_content, current->num_pairs_in_page,
+                                                        current->sst_name, current->page_number);
         } else {
-            key_to_new_linkedlist[directory_key]->add_page_frame(current->page_content, current->num_pairs_in_page, current->sst_name, current->page_number);
+            key_to_new_linkedlist[directory_key]->add_page_frame(current->page_content, current->num_pairs_in_page,
+                                                                 current->sst_name, current->page_number);
         }
         current = current->next;
     }
@@ -372,6 +388,7 @@ void BPDirectory::free_all_pages()
         cout << "out of free all pages" << prefix->first << endl;
     }
 }
+
 
 
 

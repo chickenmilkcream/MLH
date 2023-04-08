@@ -751,6 +751,13 @@ void KeyValueStore::serialize()
         const char *filename = "sst.1.1.bin";
         cout << "serializing into " << filename << endl;
         this->write_to_file(filename, sizes, non_terminal_nodes, terminal_nodes);
+
+        // new bloom filter
+        // cast pairs.size() to uint32_t
+        // construct a new bloom filter with the size of pairs.size() using the definition from BloomFilter.h
+        BloomFilter *bf = new BloomFilter(5, 10, filename, static_cast<uint32_t>(pairs.size()));
+
+//        insert_page(void *page_content, int num_pairs_in_page, string sst_name, int page_number, BloomFilter *bf)
     }
 }
 

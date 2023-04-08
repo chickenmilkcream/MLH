@@ -12,6 +12,7 @@
 #include "bp_linkedlist.h"
 #include "LRUCache.h"
 #include "ClockBitmap.h"
+#include "BloomFilter.h"
 
 using namespace std;
 
@@ -21,6 +22,7 @@ public:
     BPDirectory(string eviction_policy = "LRU", int initial_num_bits=0, int maximum_bp_size=0, int maximum_num_items_threshold=0);
     void insert_page(void *page_content, int num_pairs_in_page, string sst_name, int page_number);
     shared_ptr<PageFrame> get_page(string sst_name, int page_number);
+
     void extend_directory();
 
     void set_policy(string policy);
@@ -30,7 +32,8 @@ public:
     string hash_string(string source);
     void free_all_pages();
     void evict_pages_associated_with_files(size_t memtable_size, vector<string> filenames);
-    
+
+
     string policy;
     int page_id;
     int initial_num_bits;

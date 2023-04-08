@@ -2,7 +2,7 @@
 #define BP_LINKEDLIST_H
 
 #include "bp_pageframe.h"
-
+#include "BloomFilter.h"
 #include <memory>
 
 using namespace std;

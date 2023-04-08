@@ -1,6 +1,6 @@
 CC := g++
 CFLAGS := -Wall -g -std=c++17 -lstdc++fs
-OBJFILES := avl_node.o avl_tree.o memtable.o kv_store.o xxhash.o ClockBitmap.o LRUCache.o bp_pageframe.o bp_linkedlist.o bp_directory.o
+OBJFILES := avl_node.o avl_tree.o memtable.o kv_store.o xxhash.o ClockBitmap.o LRUCache.o bp_pageframe.o bp_linkedlist.o bp_directory.o BloomFilter.o
 
 all: clean phase2_clock
 

@@ -5,6 +5,7 @@
 #include <string>
 #include <iostream>
 #include <memory>
+#include "BloomFilter.h"
 
 using namespace std;
 
@@ -29,6 +30,7 @@ public:
     void set_id(int id);
     int get_page_number();
 
+    BloomFilter *bloomFilter;
 };
 
 #endif

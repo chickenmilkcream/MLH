@@ -7,6 +7,7 @@
 
 #include "memtable.h"
 #include "bp_directory.h"
+#include "BloomFilter.h"
 
 #define PAGE_SIZE 4096 // must be 4096 for direct I/O
 

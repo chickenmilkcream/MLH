@@ -121,7 +121,7 @@ int main(int argc, char *argv[]) {
          page_number++;
          cout << "inserting page " << page_number << endl;
 
-         bpd.insert_page(&page_content[i], num_pairs_in_page, sst_name, page_number);
+        bpd.insert_page(&page_content[i], num_pairs_in_page, sst_name, page_number);
      }
 
 
