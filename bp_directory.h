@@ -29,7 +29,8 @@ public:
     vector<string> get_keys_sharing_linkedlist(map<string, shared_ptr<BPLinkedList> > directory, string key);
     string hash_string(string source);
     void free_all_pages();
-
+    void evict_pages_associated_with_files(size_t memtable_size, vector<string> filenames);
+    
     string policy;
     int page_id;
     int initial_num_bits;

@@ -4,6 +4,7 @@
 #include "bp_pageframe.h"
 #include "ClockBitmap.h"
 #include <iostream>
+#include <filesystem>
 #include <vector>
 #include <utility>
 #include <fcntl.h>
@@ -11,6 +12,7 @@
 #include <fcntl.h>
 #include <memory>
 #include <cstring>
+#include <cmath>
 
 #define PAGE_SIZE 4096
 
@@ -241,6 +243,27 @@ void BPDirectory::evict_page(shared_ptr<PageFrame> pageFrame) {
     string source = pageFrame->sst_name + to_string(pageFrame->page_number);
     string directory_key = this->hash_string(source);
     this->directory[directory_key]->remove_page_frame(pageFrame);
+}
+
+void BPDirectory::evict_pages_associated_with_files(size_t memtable_size, vector<string> filenames) {
+    for (const auto& filename : filenames) {
+        if (filesystem::exists(filename)) {
+            int curr_layer = stoi(filename.substr(4));;
+            int num_pages_in_file = (memtable_size * pow(2, curr_layer)) / PAGE_SIZE;
+            for (int page_number = 0; page_number < num_pages_in_file + 1; page_number++) {
+                string source = filename + to_string(page_number);
+                string directory_key = this->hash_string(source);
+                try {
+                    shared_ptr<PageFrame> pageFrame = this->directory[directory_key]->find_page_frame(filename, page_number);
+                    this->directory[directory_key]->remove_page_frame(pageFrame);
+                } catch (out_of_range &e) {
+                    continue;
+                }
+            }
+        } else {
+            continue;
+        }
+    }
 }
 
 vector<string> BPDirectory::generate_binary_strings(int n, string str)

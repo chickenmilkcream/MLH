@@ -423,7 +423,7 @@ void KeyValueStore::read_from_file(const char *filename)
     if (!exists(filename)) {
         throw invalid_argument("File not found");
     }
-
+    cout << "--- Reading from file: " << filename << endl;
     vector<size_t> sizes;
     vector<vector<db_key_t> > non_terminal_nodes;
     vector<pair<db_key_t, db_val_t> > terminal_nodes;
@@ -497,6 +497,9 @@ void KeyValueStore::compact_files(vector<string> filenames) // filenames are ord
 {
     size_t size;
     vector<db_key_t> fence_keys;
+    // this->buffer_pool.evict_pages_associated_with_files(this->memtable_size, filenames);
+    this->buffer_pool.free_all_pages();
+    // this->buffer_pool.print_directory();
     this->compact_files_first_pass(filenames, size, fence_keys);
     this->compact_files_second_pass(filenames, size, fence_keys);
 }
@@ -678,7 +681,7 @@ void KeyValueStore::compact_files_second_pass(vector<string> filenames,
         const char *filename = ("sst." + to_string(lvl + 1) + ".2.bin").c_str();
         cout << "compacting into " << filename << endl;
         this->write_to_file(filename, sizes, non_terminal_nodes, terminal_nodes);
-
+        this->read_from_file(filename);
         remove("temp");
 
         vector<string> filenames = {
@@ -690,6 +693,7 @@ void KeyValueStore::compact_files_second_pass(vector<string> filenames,
         const char *filename = ("sst." + to_string(lvl + 1) + ".1.bin").c_str();
         cout << "compacting into " << filename << endl;
         this->write_to_file(filename, sizes, non_terminal_nodes, terminal_nodes);
+        this->read_from_file(filename);
 
         remove("temp");
     }
@@ -743,6 +747,10 @@ void KeyValueStore::serialize()
         const char *filename = "sst.1.2.bin";
         cout << "serializing into " << filename << endl;
         this->write_to_file(filename, sizes, non_terminal_nodes, terminal_nodes);
+        this->read_from_file(filename);
+        // chrono::seconds sleepTime(1);
+        // this_thread::sleep_for(sleepTime);
+
 
         vector<string> filenames = {"sst.1.2.bin", "sst.1.1.bin"}; // newest to oldest
         this->compact_files(filenames);
@@ -750,6 +758,9 @@ void KeyValueStore::serialize()
         const char *filename = "sst.1.1.bin";
         cout << "serializing into " << filename << endl;
         this->write_to_file(filename, sizes, non_terminal_nodes, terminal_nodes);
+        // chrono::seconds sleepTime(1);
+        // this_thread::sleep_for(sleepTime);
+        this->read_from_file(filename);
     }
 }
 
