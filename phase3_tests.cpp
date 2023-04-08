@@ -98,16 +98,12 @@ int main(int argc, char *argv[])
     db.put(2, 1);
     db.del(1);
     db.read_from_file("sst.3.1.bin");
-    // db.put(3, 1);
-    // for (auto p: db.scan(-1, 4)) {
-    //     cout << "cry" << p.first << " " << p.second << endl;
-    // }
-    // assert(db.scan(-1, 4).size() == 3); // 0, 2, 3
-
-    // db.del(3);
-    // assert(db.scan(-1, 4).size() == 2); // 0, 2
-    // db.del(2);
-    // assert(db.scan(-1, 4).size() == 1); // 0
+    db.put(3, 1);
+    assert(db.scan(-1, 4).size() == 3); // 0, 2, 3
+    db.del(3);
+    assert(db.scan(-1, 4).size() == 2); // 0, 2
+    db.del(2);
+    assert(db.scan(-1, 4).size() == 1); // 0
 }
 
 

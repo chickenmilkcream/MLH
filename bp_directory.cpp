@@ -3,11 +3,11 @@
 #include "LRUCache.h"
 #include "bp_pageframe.h"
 #include "ClockBitmap.h"
+#include <fstream>
 #include <iostream>
 #include <filesystem>
 #include <vector>
 #include <utility>
-#include <fcntl.h>
 #include <unistd.h>
 #include <fcntl.h>
 #include <memory>
@@ -247,9 +247,11 @@ void BPDirectory::evict_page(shared_ptr<PageFrame> pageFrame) {
 
 void BPDirectory::evict_pages_associated_with_files(size_t memtable_size, vector<string> filenames) {
     for (const auto& filename : filenames) {
+        ifstream file(filename, std::ios::binary);
         if (filesystem::exists(filename)) {
-            int curr_layer = stoi(filename.substr(4));;
-            int num_pages_in_file = (memtable_size * pow(2, curr_layer)) / PAGE_SIZE;
+            file.seekg(0, std::ios::end);
+            int file_size = static_cast<int>(file.tellg());
+            int num_pages_in_file = file_size / PAGE_SIZE;
             for (int page_number = 0; page_number < num_pages_in_file + 1; page_number++) {
                 string source = filename + to_string(page_number);
                 string directory_key = this->hash_string(source);
@@ -364,8 +366,10 @@ void BPDirectory::free_all_pages()
 {
     for (auto prefix = this->directory.begin(); prefix != this->directory.end(); ++prefix)
     {
+        cout << "in free all pages" << prefix->first << endl;
         int num_pages_freed = prefix->second->free_all_pages();
         this->current_bp_size -= num_pages_freed * PAGE_SIZE;
+        cout << "out of free all pages" << prefix->first << endl;
     }
 }
 

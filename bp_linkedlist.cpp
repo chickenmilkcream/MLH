@@ -1,6 +1,6 @@
 #include "bp_linkedlist.h"
 #include "memory"
-
+#include <vector>
 BPLinkedList::BPLinkedList()
 {
     head = nullptr;
@@ -50,7 +50,7 @@ void BPLinkedList::print_list()
     shared_ptr<PageFrame> current = head;
     while (current != nullptr)
     {
-        cout << current->page_number << ": " << current->clock_bit << ", ";
+        cout << current->sst_name << " Page " << current->page_number << ";" << endl;
         current = current->next;
     }
     cout << endl;
