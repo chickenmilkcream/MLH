@@ -9,14 +9,12 @@
 #include <cassert>
 
 
-BloomFilter::BloomFilter(uint32_t num_bits_per_entry, uint32_t num_hash_functions, const char *filename,
-                         uint32_t num_entries)
-        : num_bits_per_entry(num_bits_per_entry),
-          num_hash_functions(num_hash_functions),
-          num_bits(num_bits_per_entry * num_entries) {
+BloomFilter::BloomFilter(string filename, uint32_t num_entries, uint32_t num_hash_functions)
+        : num_hash_functions(num_hash_functions),
+          num_bits(NUM_BITS_PER_ENTRY * num_entries) {
     bit_array.resize(num_bits, false);
-    this->file_name = filename;
-    this->size = num_bits_per_entry * num_entries * sizeof(db_key_t);
+    this->sst_name = filename;
+    this->size = NUM_BITS_PER_ENTRY * num_entries * sizeof(db_key_t);
 }
 
 void BloomFilter::insert(db_val_t value) {
@@ -28,6 +26,7 @@ void BloomFilter::insert(db_val_t value) {
 }
 
 bool BloomFilter::contains(db_val_t value) const {
+    cout << "checking if value " << value << " is in bloom filter" << endl;
     for (uint32_t i = 0; i < num_hash_functions; ++i) {
         uint32_t index = hash(value, i) % num_bits;
         if (0 == bit_array[index]) {
@@ -43,13 +42,13 @@ uint32_t BloomFilter::hash(db_val_t value, uint32_t i) const {
     return static_cast<uint32_t>((hash_seed * 0x9e3779b1) % 0xFFFFFFFF);
 }
 
-void BloomFilter::write_to_file(const char *filename) {
+void BloomFilter::write_to_file(string filename) {
     std::ofstream file(filename, std::ios::out | std::ios::binary);
     file.write(reinterpret_cast<char *>(&bit_array[0]), num_bits);
     file.close();
 }
 
-void BloomFilter::read_from_file(const char *filename) {
+void BloomFilter::read_from_file(string filename) {
     // read contents from binary file into vector<int> until end of file but we don't know how many bits
     // are in the file so we need to read until the end of the file
     std::ifstream file(filename, std::ios::in | std::ios::binary);
@@ -59,11 +58,12 @@ void BloomFilter::read_from_file(const char *filename) {
     bit_array.resize(file_size);
     file.read(reinterpret_cast<char *>(&bit_array[0]), file_size);
     file.close();
+
 }
 
-//
+
 //int main() {
-//    BloomFilter filter(10000, 7, nullptr, 2);
+//    BloomFilter filter(10000, 7, "gg", 2);
 //
 //    filter.insert(1);
 //    filter.insert(2);
@@ -97,6 +97,7 @@ void BloomFilter::read_from_file(const char *filename) {
 //        assert(oof[i] == rip[i]);
 //    }
 //    assert(oof == rip);
+//    std::cout << rip.size() << std::endl;
 //
 //    // print out integers from the binary file
 //    std::cout << "contains 1: " << filter.contains(1) << std::endl;

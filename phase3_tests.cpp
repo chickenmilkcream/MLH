@@ -87,10 +87,12 @@ int main(int argc, char *argv[])
     cout << "SCAN tests" << endl;
     db = KeyValueStore(2 * DB_PAIR_SIZE, eviction_policy, initial_num_bits, maximum_bp_size, maximum_num_items_threshold); // writes n / 4096 SSTs
     db.put(0, 1);
+//    db.get(0);
     db.put(1, 1);
     db.del(0);
     db.del(1);
     db.read_from_file("sst.2.1.bin");
+
     assert(db.scan(-1, 2).size() == 0);
     db.put(0, 5);
     db.put(1, 1);
@@ -105,6 +107,12 @@ int main(int argc, char *argv[])
     db.del(2);
     assert(db.scan(-1, 4).size() == 1); // 0
 
+
+    cout << "testing bloom filter" << endl;
+//    db.get(2, search_alg::binary_search);
+
+    cout << "get 69" << endl;
+//    db.get(69,search_alg::binary_search);
 
     cout << "\n\n\nk everything passes now don't touch the code or we might break something uwu\n\n\n\n" << endl;
 }

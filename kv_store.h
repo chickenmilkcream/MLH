@@ -35,6 +35,7 @@ public:
   void read_from_file(const char *filename);
   void print();
   void delete_sst_files();
+  bool use_bloom_filter(string sst_name, db_key_t key);
 
 private:
   Memtable memtable;

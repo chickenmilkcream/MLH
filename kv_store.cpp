@@ -171,9 +171,19 @@ db_val_t KeyValueStore::get(db_key_t key, search_alg alg)
         return val;
     } catch (invalid_argument &e) {
         // Couldn't find it in the memtable
+        cout << "Key" << key << " not found in memtable" << endl;
         // Loop through the SSTs from latest to oldest
         for (size_t i = 1; i < DB_MAX_LEVEL; i++) {
             string filename = "sst." + to_string(i) + ".1.bin";
+
+            bool res = this->use_bloom_filter(filename, key);
+            if (!res) {
+                std::cout << "Bloom filter says no for sst " << i << " key " << key << std::endl;
+                continue;
+            } else {
+                std::cout << "passed bloom filter for sst " << i << " key " << key << std::endl;
+            }
+
             if (exists(filename)) {
                 int fd = open(filename.c_str(), O_RDONLY | O_DIRECT | O_SYNC);
                 off_t start = 0;
@@ -755,9 +765,21 @@ void KeyValueStore::serialize()
         // new bloom filter
         // cast pairs.size() to uint32_t
         // construct a new bloom filter with the size of pairs.size() using the definition from BloomFilter.h
-        BloomFilter *bf = new BloomFilter(5, 10, filename, static_cast<uint32_t>(pairs.size()));
+        auto bf = make_shared<BloomFilter>(filename, pairs.size(), 5);
+        cout << "created new bloom filter for sst.1.1.bin" << endl;
+        // insert all keys into the bloom filter
+        for (auto &pair : pairs) {
+            bf->insert(pair.first);
+        }
+//        cout << "inserted keys into bloom filter for sst.1.1.bin" << endl;
 
-//        insert_page(void *page_content, int num_pairs_in_page, string sst_name, int page_number, BloomFilter *bf)
+        this->buffer_pool.insert_bloom_filter(bf);
+        cout << "inserted bloom filter for sst.1.1.bin into buffer pool" << endl;
+
+        bf->write_to_file("bf_sst.1.1.bin");
+//        cout << "bloom filter now stored at bf_sst.1.1.bin" << endl;
+
+
     }
 }
 
@@ -769,5 +791,20 @@ void KeyValueStore::delete_sst_files() {
             std::filesystem::remove(entry.path());
             std::cout << "Deleted file: " << filename << std::endl;
         }
+    }
+}
+
+bool KeyValueStore::use_bloom_filter(string sst_name, db_key_t key) {
+    // returns true if the key is probably in sst_name
+    shared_ptr<BloomFilter> bf = this->buffer_pool.get_bloom_filter(sst_name);
+
+    if (bf == nullptr) {
+        std::cout << "Bloom filter for " << sst_name << " not found in buffer pool" << std::endl;
+        // TODO: load bloom filter from file
+
+        return true;
+    } else {
+        std::cout << "Bloom filter for " << sst_name << " found in buffer pool" << std::endl;
+        return bf->contains(key);
     }
 }

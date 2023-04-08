@@ -32,7 +32,11 @@ public:
     string hash_string(string source);
     void free_all_pages();
     void evict_pages_associated_with_files(size_t memtable_size, vector<string> filenames);
+    void insert_bloom_filter(shared_ptr<BloomFilter> bf);
+    shared_ptr<BloomFilter> get_bloom_filter(string sst_name);
 
+    void remove_bloom_filter(string sst_name);
+    void load_bloom_filter(string sst_name);
 
     string policy;
     int page_id;
@@ -46,12 +50,14 @@ public:
     int maximum_num_items_threshold;
 
     map<string, shared_ptr<BPLinkedList> > directory;
+    map<string, shared_ptr<BloomFilter>> bloom_filters;
 
     shared_ptr<LRUCache> lru_cache;
     shared_ptr<ClockBitmap> clock_bitmap;
     int clock_hand_key;
 
     void set_maximum_bp_size(int value);
+
 
 private:
     vector<string> generate_binary_strings(int n, string str = "");

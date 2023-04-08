@@ -133,9 +133,9 @@ BPDirectory::insert_page(void *page_content, int num_pairs_in_page, string sst_n
     this->current_bp_size += PAGE_SIZE;
 
 
-    cout << "mallocing page" << endl;
+//    cout << "mallocing page" << endl;
     // Malloc memory for the page
-    cout << "malloc page for bloom filter" << endl;
+//    cout << "malloc page for bloom filter" << endl;
     void *malloc_page;
 
 
@@ -143,7 +143,7 @@ BPDirectory::insert_page(void *page_content, int num_pairs_in_page, string sst_n
     memcpy(malloc_page, page_content, PAGE_SIZE);
 
 
-    cout << "adding page frame bloom filter" << endl;
+//    cout << "adding page frame bloom filter" << endl;
 
 
     shared_ptr<PageFrame> newNode = this->directory[directory_key]->add_page_frame(malloc_page, num_pairs_in_page,
@@ -388,6 +388,37 @@ void BPDirectory::free_all_pages()
         cout << "out of free all pages" << prefix->first << endl;
     }
 }
+
+void BPDirectory::insert_bloom_filter(shared_ptr<BloomFilter> bf) {
+    string sst_name = bf->sst_name;
+    // put *bf into bloom_filters with key sst_name
+    this->bloom_filters[sst_name] = bf;
+    cout << "inserted bloom filter with sst_name: " << sst_name << this->bloom_filters[sst_name]->sst_name << endl;
+    this->current_bp_size += bf->size;
+    this->evict_until_under_max_bp_size();
+}
+
+
+
+void BPDirectory::remove_bloom_filter(string sst_name) {
+    this->current_bp_size -= this->bloom_filters[sst_name]->size;
+    this->bloom_filters.erase(sst_name);
+}
+
+void BPDirectory::load_bloom_filter(string sst_name) {
+    // TODO: figure out how to save and load bloom filters to disk, including metadata like bf size, num_hashes and num_bits
+}
+
+shared_ptr<BloomFilter> BPDirectory::get_bloom_filter(string sst_name) {
+    // print this->bloom_filters
+
+    // print out the sst_name of all the bloom filters
+//    for (auto it = this->bloom_filters.begin(); it != this->bloom_filters.end(); ++it) {
+//        cout << "The sst_name of the bloom filter: " << it->first << endl;
+//    }
+    return this->bloom_filters[sst_name];
+}
+
 
 
 
