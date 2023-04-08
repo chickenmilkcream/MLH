@@ -181,7 +181,7 @@ db_val_t KeyValueStore::get(db_key_t key, search_alg alg)
                 std::cout << "Bloom filter says no for sst " << i << " key " << key << std::endl;
                 continue;
             } else {
-                std::cout << "passed bloom filter for sst " << i << " key " << key << std::endl;
+//                std::cout << "passed bloom filter for sst " << i << " key " << key << std::endl;
             }
 
             if (exists(filename)) {
@@ -227,7 +227,7 @@ db_val_t KeyValueStore::get(db_key_t key, search_alg alg)
             }
         }
 
-        throw invalid_argument("Key not found");
+        throw invalid_argument("Key not found after searching everything big rip");
     }
 }
 
@@ -804,7 +804,7 @@ bool KeyValueStore::use_bloom_filter(string sst_name, db_key_t key) {
 
         return true;
     } else {
-        std::cout << "Bloom filter for " << sst_name << " found in buffer pool" << std::endl;
+//        std::cout << "Bloom filter for " << sst_name << " found in buffer pool" << std::endl;
         return bf->contains(key);
     }
 }

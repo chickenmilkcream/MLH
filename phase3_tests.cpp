@@ -112,7 +112,7 @@ int main(int argc, char *argv[])
 //    db.get(2, search_alg::binary_search);
 
     cout << "get 69" << endl;
-//    db.get(69,search_alg::binary_search);
+    db.get(69,search_alg::binary_search);
 
     cout << "\n\n\nk everything passes now don't touch the code or we might break something uwu\n\n\n\n" << endl;
 }
