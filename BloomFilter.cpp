@@ -64,10 +64,10 @@ void BloomFilter::set_sst_name(string filename) {
     this->sst_name = std::move(filename);
 }
 
-void BloomFilter::set_parameters(uint32_t num_bits, uint32_t num_hash_functions) {
-    this->num_bits = num_bits;
+void BloomFilter::set_parameters(uint32_t num_entries, uint32_t num_hash_functions) {
+    this->num_bits = num_entries * NUM_BITS_PER_ENTRY;
     this->num_hash_functions = num_hash_functions;
-    bit_array.resize(num_bits, false);
+    bit_array.resize(this->num_bits, false);
 }
 
 
