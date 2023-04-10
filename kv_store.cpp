@@ -58,7 +58,7 @@ ssize_t aligned_pread(int fd, void *buf, size_t n, off_t fp) {
 //        ||
 //        ||  ,
 //    |\  ||  |\
-//    | | ||  | |      A flower for the lonely TA marking this
+//    | | ||  | |      A pretty flower for the lonely TA marking this
 //    | | || / /       from the lonely students hoping for partial marks
 //     \ \||/ /
 //      `\\//`
