@@ -47,6 +47,23 @@ ssize_t aligned_pread(int fd, void *buf, size_t n, off_t fp) {
     return n_read;
 }
 
+//          ,
+//      /\^/`\
+//     | \/   |
+//     | |    |
+//     \ \    /
+//      '\\//'
+//        ||
+//        ||
+//        ||
+//        ||  ,
+//    |\  ||  |\
+//    | | ||  | |      A flower for the lonely TA marking this
+//    | | || / /       from the lonely students hoping for partial marks
+//     \ \||/ /
+//      `\\//`
+//     ^^^^^^^^
+
 KeyValueStore::KeyValueStore(size_t memtable_size,
                              string eviction_policy,
                              int initial_num_bits,
