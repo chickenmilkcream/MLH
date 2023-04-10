@@ -16,7 +16,6 @@ public:
             vector<pair<db_key_t, db_val_t> > &pairs);
   void scan(db_key_t min_key, db_key_t max_key,
             vector<pair<db_key_t, db_val_t> > &pairs, set<db_key_t> *deleted_keys);
-  // void del(db_key_t key);
   void print();
 
 private:

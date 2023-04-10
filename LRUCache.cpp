@@ -1,11 +1,5 @@
-//
-// Created by oof on 3/13/2023.
-//
-
 #include "LRUCache.h"
 #include <iostream>
-//using namespace std;
-
 
 LRUCache::LRUCache() :head(nullptr), tail() {}
 
@@ -15,18 +9,12 @@ void LRUCache::mark_item_as_used(shared_ptr<PageFrame> pageFrame)
         return;
     }
     int key = pageFrame->get_page_number();
-//    cout << "using page with key: " << key << endl;
     auto it = cache.find(key);
     if (it == cache.end()) {
-//        cout << "key not found" << key << endl;
         return; // key not found
-
     }
 
     shared_ptr<CacheNode> node = it->second;
-//    cout << "before move to front: " << endl;
-//    print_list();
-//    cout << "after move to front: " << endl;
     moveToFront(node);
 }
 
@@ -39,7 +27,6 @@ shared_ptr<PageFrame> LRUCache::evict_one_page_item() {
     }
     int key = shared_tail->key;
     shared_ptr<PageFrame> pageFrame = shared_tail->value;
-    // cout << "evicting page with key: " << key << endl;
     cache.erase(key);
     remove(shared_tail);
     return pageFrame;
@@ -84,9 +71,6 @@ void LRUCache::remove(shared_ptr<CacheNode> node) {
     } else {
         node->next->prev = node->prev;
     }
-//    cout << "LRU evicting page number " << node->value->get_page_number() << endl;
-//    this->print_list();
-    // delete node;
 }
 
 void LRUCache::moveToFront(shared_ptr<CacheNode> node) {

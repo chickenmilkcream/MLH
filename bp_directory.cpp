@@ -38,7 +38,6 @@ BPDirectory::BPDirectory(string eviction_policy, int initial_num_bits, int maxim
     }
 
     this->lru_cache = make_shared<LRUCache>();
-//    this->clock_bitmap = make_shared<ClockBitmap>(this->maximum_num_items_threshold + 10000);
     this->update_directory_keys();
     this->clock_hand_key = 0;
     this->clock_hand_location = this->directory[this->directory_keys[0]]->head;
@@ -56,24 +55,16 @@ shared_ptr<PageFrame> BPDirectory::clock_find_victim() {
 
     while (true) {
         this->move_clock_hand();
-        // cout << "clock hand location " << this->clock_hand_location << endl;
 
         shared_ptr<PageFrame> potential_victim = this->clock_hand_location;
         if (potential_victim == nullptr) {
             continue;
         }
-//        cout << "found potential victim " << potential_victim->page_number << " bit " << potential_victim->clock_bit << endl;
 
-        // cout<< "clock cycle count " << this->clock_cycle_count << " " << this->directory[this->directory_keys[this->clock_hand_key]]->clock_cycle_count << endl;
         if (this->directory[this->directory_keys[this->clock_hand_key]]->clock_cycle_count < this->clock_cycle_count) {
-            // cout << "Potential victim page number " << potential_victim->page_number << endl;
-            // cout << "clock hand located at page" << potential_victim->page_number << " key "
-            //     << this->directory_keys[clock_hand_key] << " oof " << clock_hand_key << endl;
             if (potential_victim->get_reference_bit() == 0) {
-                // cout << "Found victim page number " << potential_victim->page_number << endl;
                 return potential_victim;
             } else {
-
                 potential_victim->set_reference_bit(0);
             }
             if (this->clock_hand_location->next == nullptr) {
@@ -86,7 +77,6 @@ shared_ptr<PageFrame> BPDirectory::clock_find_victim() {
 void BPDirectory::move_clock_hand() {
     // update the reference bit of the victim to 1
     // update the clock hand to point to the next item in the clock bitmap
-    // std::cout << "Moving clock hand" << std::endl;
     if (this->clock_hand_location == nullptr) {
         this->clock_hand_key++;
         if ((size_t) this->clock_hand_key >= this->directory_keys.size()) {
@@ -99,19 +89,15 @@ void BPDirectory::move_clock_hand() {
         this->clock_hand_location = this->clock_hand_location->next;
 
     }
-    // std::cout << "Clock hand key " << this->clock_hand_key << std::endl;
 }
 
 
 void BPDirectory::update_directory_keys()
 {
     this->directory_keys.clear();
-    // cout << "Updating directory keys" << endl;
     for (auto it = this->directory.begin(); it != this->directory.end(); ++it)
     {
         this->directory_keys.push_back(it->first);
-        // cout << it->first << endl;
-
     }
     this->clock_hand_key = 0;
     this->clock_hand_location = this->directory[this->directory_keys[0]]->head;
@@ -129,22 +115,10 @@ BPDirectory::insert_page(void *page_content, int num_pairs_in_page, string sst_n
     string source = sst_name + to_string(page_number);
     string directory_key = this->hash_string(source);
 
-
     this->current_bp_size += PAGE_SIZE;
-
-
-//    cout << "mallocing page" << endl;
-    // Malloc memory for the page
-//    cout << "malloc page for bloom filter" << endl;
     void *malloc_page;
-
-
     malloc_page = malloc(PAGE_SIZE);
     memcpy(malloc_page, page_content, PAGE_SIZE);
-
-
-//    cout << "adding page frame bloom filter" << endl;
-
 
     shared_ptr<PageFrame> newNode = this->directory[directory_key]->add_page_frame(malloc_page, num_pairs_in_page,
                                                                                    sst_name, page_number);
@@ -152,19 +126,15 @@ BPDirectory::insert_page(void *page_content, int num_pairs_in_page, string sst_n
     this->page_id += 1;
     newNode->set_id(this->page_id);
 
-//    cout << "adding to cache" << endl;
     if (this->policy == "LRU") {
         this->lru_cache->put(newNode->page_number, newNode);
     }
     else { // clock
-//        this->clock_bitmap->put(this->page_id, newNode);
         // don't need to do anything for now. We will update the clock hand when we need to evict
     }
 
-//    cout << "evicting until under max bp size" << endl;
     this->evict_until_under_max_bp_size();
 
-//    cout << "checking if we need to rehash" << endl;
     if (this->current_num_items >= this->maximum_num_items_threshold) {
         // This should rehash all the linkedlists greater than length 1 after expansion
         this->extend_directory();
@@ -206,7 +176,6 @@ void BPDirectory::mark_item_as_used(shared_ptr<PageFrame> pageFrame) {
         this->lru_cache->mark_item_as_used(pageFrame);
     }
     else { // clock
-//        this->clock_bitmap->use_item(pageFrame);
         pageFrame->set_reference_bit(1);
     }
 }
@@ -382,10 +351,8 @@ void BPDirectory::free_all_pages()
 {
     for (auto prefix = this->directory.begin(); prefix != this->directory.end(); ++prefix)
     {
-        cout << "in free all pages" << prefix->first << endl;
         int num_pages_freed = prefix->second->free_all_pages();
         this->current_bp_size -= num_pages_freed * PAGE_SIZE;
-        cout << "out of free all pages" << prefix->first << endl;
     }
 }
 
@@ -393,7 +360,7 @@ void BPDirectory::insert_bloom_filter(shared_ptr<BloomFilter> bf) {
     string sst_name = bf->sst_name;
     // put *bf into bloom_filters with key sst_name
     this->bloom_filters[sst_name] = bf;
-    cout << "inserted bloom filter with sst_name: " << sst_name << this->bloom_filters[sst_name]->sst_name << endl;
+    // cout << "inserted bloom filter with sst_name: " << sst_name << this->bloom_filters[sst_name]->sst_name << endl;
     this->current_bp_size += bf->size;
     this->evict_until_under_max_bp_size();
 }

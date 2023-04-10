@@ -1,9 +1,3 @@
-//
-// Created by oof on 3/14/2023.
-//
-//
-// Created by oof on 3/12/2023.
-//
 #include <iostream>
 #include <cassert>
 #include "bp_directory.h"

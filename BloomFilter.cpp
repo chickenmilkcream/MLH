@@ -20,7 +20,6 @@ BloomFilter::BloomFilter(string filename, uint32_t num_entries, uint32_t num_has
 void BloomFilter::insert(db_val_t value) {
     for (uint32_t i = 0; i < num_hash_functions; ++i) {
         uint32_t index = hash(value, i) % num_bits;
-//        std::cout << "index: " << index << std::endl;
         bit_array[index] = 1;
     }
 }

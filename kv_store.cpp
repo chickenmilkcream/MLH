@@ -72,8 +72,6 @@ void KeyValueStore::bpread(string filename, int fd, void *buf, off_t fp) {
 
 void KeyValueStore::open_db(string db)
 {
-    // TODO TEAM: clarify load all SSTs??
-    // TODO TEAM: discuss with team what else to do here
 }
 
 void KeyValueStore::close_db()
@@ -358,7 +356,6 @@ void KeyValueStore::write_to_file(const char *filename,
                                   vector<vector<db_key_t> > non_terminal_nodes,
                                   vector<pair<db_key_t, db_val_t> > terminal_nodes)
 {
-    // cout << "writing..." << filename << endl;
     int fd = open(filename,
                   O_WRONLY | O_DIRECT | O_SYNC | O_TRUNC | O_CREAT,
                   S_IRUSR | S_IWUSR);
@@ -391,7 +388,6 @@ void KeyValueStore::write_to_file(const char *filename,
                                   vector<vector<db_key_t> > non_terminal_nodes,
                                   const char *terminal_nodes)
 {
-    // cout << "writing..." << filename << endl;
     int fd = open(filename,
                   O_WRONLY | O_DIRECT | O_SYNC | O_TRUNC | O_CREAT,
                   S_IRUSR | S_IWUSR);
@@ -790,8 +786,6 @@ void KeyValueStore::serialize()
 
         bf->write_to_file("bf_sst.1.1.bin");
 //        cout << "bloom filter now stored at bf_sst.1.1.bin" << endl;
-
-
     }
 }
 

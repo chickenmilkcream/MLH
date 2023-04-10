@@ -24,7 +24,6 @@ public:
     shared_ptr<PageFrame> get_page(string sst_name, int page_number);
 
     void extend_directory();
-
     void set_policy(string policy);
     void rehash_linked_list(map<string, shared_ptr<BPLinkedList> > *directory, string key, vector<string> shared_keys);
     void print_directory();
@@ -49,31 +48,27 @@ public:
     int current_num_items;
     int maximum_num_items_threshold;
 
+    int clock_hand_key;
+    
     map<string, shared_ptr<BPLinkedList> > directory;
     map<string, shared_ptr<BloomFilter>> bloom_filters;
 
     shared_ptr<LRUCache> lru_cache;
     shared_ptr<ClockBitmap> clock_bitmap;
-    int clock_hand_key;
 
     void set_maximum_bp_size(int value);
 
 
 private:
+    shared_ptr<PageFrame> clock_hand_location;
+    vector<string> directory_keys;    
+    
     vector<string> generate_binary_strings(int n, string str = "");
-
     void evict_page(shared_ptr<PageFrame> pageToEvict);
     void mark_item_as_used(shared_ptr<PageFrame>pageFrame);
-
     void evict_until_under_max_bp_size();
-
-    shared_ptr<PageFrame> clock_hand_location;
-    vector<string> directory_keys;
-
     void update_directory_keys();
-
     shared_ptr<PageFrame>clock_find_victim();
-
     void move_clock_hand();
     int clock_cycle_count;
 };

@@ -37,9 +37,4 @@ vector<pair<db_key_t, db_val_t> > Memtable::scan(db_key_t min_key, db_key_t max_
   return pairs;
 }
 
-// void Memtable::del(db_key_t key) {
-//   this->tree.del(key);
-//   this->size -= DB_PAIR_SIZE;
-// }
-
 void Memtable::print() { this->tree.print(); }

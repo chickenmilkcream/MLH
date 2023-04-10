@@ -11,6 +11,14 @@
 
 class BloomFilter {
 public:
+
+    std::vector<int> bit_array;
+    size_t size;
+    string sst_name;
+    uint32_t num_bits;
+    uint32_t num_bits_per_entry{};
+    uint32_t num_hash_functions;
+
     BloomFilter(string filename, uint32_t num_entries, uint32_t num_hash_functions);
 
     void insert(db_val_t value);
@@ -20,22 +28,8 @@ public:
     void set_sst_name(string filename);
     void read_from_file(string filename);
 
-    std::vector<int> bit_array;
-    size_t size;
-    string sst_name;
-    uint32_t num_bits;
-    uint32_t num_bits_per_entry{};
-    uint32_t num_hash_functions;
-
 private:
-
-
-
-
     uint32_t hash(db_val_t value, uint32_t i) const;
-
-
-
 };
 
 #endif // BLOOMFILTER_H
