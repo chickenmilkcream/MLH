@@ -9,10 +9,11 @@
 
 # define NUM_BITS_PER_ENTRY 5
 
+
 class BloomFilter {
 public:
 
-    std::vector<int> bit_array;
+    std::vector<bool> bit_array;
     size_t size;
     string sst_name;
     uint32_t num_bits;

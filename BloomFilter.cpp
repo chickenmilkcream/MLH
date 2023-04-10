@@ -20,7 +20,7 @@ BloomFilter::BloomFilter(string filename, uint32_t num_entries, uint32_t num_has
 void BloomFilter::insert(db_val_t value) {
     for (uint32_t i = 0; i < num_hash_functions; ++i) {
         uint32_t index = hash(value, i) % num_bits;
-        bit_array[index] = 1;
+        bit_array[index] = true;
     }
 }
 
@@ -28,7 +28,7 @@ bool BloomFilter::contains(db_val_t value) const {
     cout << "checking if value " << value << " is in bloom filter" << endl;
     for (uint32_t i = 0; i < num_hash_functions; ++i) {
         uint32_t index = hash(value, i) % num_bits;
-        if (0 == bit_array[index]) {
+        if (!bit_array[index]) {
             return false;
         }
     }
@@ -42,22 +42,28 @@ uint32_t BloomFilter::hash(db_val_t value, uint32_t i) const {
 }
 
 void BloomFilter::write_to_file(string filename) {
-    std::ofstream file(filename, std::ios::out | std::ios::binary);
-    file.write(reinterpret_cast<char *>(&bit_array[0]), num_bits);
-    file.close();
+    std::ofstream outfile(filename, std::ios::binary);
+    // Write vector data to file
+    outfile.write(
+            reinterpret_cast<const char*>(
+                    *reinterpret_cast<std::uint64_t* const*>(&bit_array)),
+            bit_array.size() * sizeof(bool)
+    );
+    // Close file
+    outfile.close();
 }
 
 void BloomFilter::read_from_file(string filename) {
-    // read contents from binary file into vector<int> until end of file but we don't know how many bits
-    // are in the file so we need to read until the end of the file
-    std::ifstream file(filename, std::ios::in | std::ios::binary);
-    file.seekg(0, std::ios::end);
-    size_t file_size = file.tellg();
-    file.seekg(0, std::ios::beg);
-    bit_array.resize(file_size);
-    file.read(reinterpret_cast<char *>(&bit_array[0]), file_size);
-    file.close();
-
+    // read the file back
+    std::ifstream infile(filename, std::ios::binary);
+    // Read vector data from file
+    infile.read(
+            reinterpret_cast<char*>(
+                    *reinterpret_cast<std::uint64_t**>(&bit_array)),
+            bit_array.size() * sizeof(bool)
+    );
+// Close file
+    infile.close();
 }
 
 void BloomFilter::set_sst_name(string filename) {
