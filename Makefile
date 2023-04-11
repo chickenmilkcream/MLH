@@ -45,7 +45,18 @@ phase3_tests: clean $(OBJFILES) phase3_tests.o
 	$(CC) $(CFLAGS) -o phase3_tests $(OBJFILES) phase3_tests.o
 	./phase3_tests
 
-all_tests: clean phase1_tests clean phase2_tests clean phase2_clock clean phase2_lru clean phase3_tests clean
+all_tests:
+	make clean
+	make phase1_tests
+	make clean 
+	make phase2_tests
+	make clean
+	make phase2_clock
+	make clean
+	make phase2_lru
+	make clean
+	make phase3_tests
+	make clean
 
 %.o: %.cpp %.h
 	$(CC) $(CFLAGS) -c $<
