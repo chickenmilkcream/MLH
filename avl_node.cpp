@@ -104,7 +104,7 @@ shared_ptr<AVLNode> AVLNode::put(db_key_t key, db_val_t val)
   }
   else
   {
-    this->val = val; // already exists
+    this->val = val; // already exists, overwrite existing value
     return shared_from_this();
   }
 
@@ -112,6 +112,7 @@ shared_ptr<AVLNode> AVLNode::put(db_key_t key, db_val_t val)
                      this->right ? this->right->height : 0) +
                  1;
 
+  // rebalance...
   int balance = (this->left ? this->left->height : 0) -
                 (this->right ? this->right->height : 0);
   if (balance < -1 && this->right->key < key)
@@ -141,8 +142,38 @@ shared_ptr<AVLNode> AVLNode::put(db_key_t key, db_val_t val)
 }
 
 void AVLNode::scan(db_key_t min_key, db_key_t max_key,
-                   vector<pair<db_key_t, db_val_t> > &pairs)
+                   vector<pair<db_key_t, db_val_t>> &pairs, set<db_key_t> *deleted_keys)
 {
+  if (this->key > min_key)
+  {
+    if (this->left)
+    {
+      this->left->scan(min_key, max_key, pairs, deleted_keys);
+    }
+  }
+  if (this->key >= min_key && this->key <= max_key && this->val != DB_TOMBSTONE && !deleted_keys->count(this->key))
+  {
+    pair<db_key_t, db_val_t> pair;
+    pair = make_pair(this->key, this->val);
+    pairs.push_back(pair);
+  }
+  else if (this->key >= min_key && this->key <= max_key && this->val == DB_TOMBSTONE)
+  {
+    deleted_keys->insert(this->key);
+  }
+  if (this->key < max_key)
+  {
+    if (this->right)
+    {
+      this->right->scan(min_key, max_key, pairs, deleted_keys);
+    }
+  }
+}
+
+void AVLNode::scan(db_key_t min_key, db_key_t max_key,
+                   vector<pair<db_key_t, db_val_t>> &pairs)
+{
+  // inorder traversal but only include nodes with keys in [min_key, max_key]
   if (this->key > min_key)
   {
     if (this->left)
@@ -163,94 +194,6 @@ void AVLNode::scan(db_key_t min_key, db_key_t max_key,
       this->right->scan(min_key, max_key, pairs);
     }
   }
-}
-
-shared_ptr<AVLNode> AVLNode::del(db_key_t key)
-{
-  if (this->key > key)
-  {
-    if (!this->left)
-    {
-      throw invalid_argument("Key not found");
-    }
-    else
-    {
-      this->left = this->left->del(key);
-    }
-  }
-  else if (this->key < key)
-  {
-    if (!this->right)
-    {
-      throw invalid_argument("Key not found");
-    }
-    else
-    {
-      this->right = this->right->del(key);
-    }
-  }
-  else
-  {
-    if (!this->left && !this->right)
-    {
-      return nullptr;
-    }
-    else if (!this->left)
-    {
-      return this->right;
-    }
-    else if (!this->right)
-    {
-      return this->left;
-    }
-    else
-    {
-      shared_ptr<AVLNode> node = this->successor();
-      this->key = node->key;
-      this->val = node->val;
-      this->right = this->right->del(node->key);
-    }
-  }
-
-  this->height = max(this->left ? this->left->height : 0,
-                     this->right ? this->right->height : 0) + 1;
-
-  int balance = (this->left ? this->left->height : 0) -
-                (this->right ? this->right->height : 0);
-  if (balance < -1 && this->right->key < key)
-  {
-    // right-left imbalance
-    this->right = this->right->rotate_right();
-    return this->rotate_left();
-  }
-  if (balance < -1 && this->right->key > key)
-  {
-    // right-right imbalance
-    return this->rotate_left();
-  }
-  if (balance > 1 && this->left->key > key)
-  {
-    // left-right imbalance
-    this->left = this->left->rotate_left();
-    return this->rotate_right();
-  }
-  if (balance > 1 && this->left->key < key)
-  {
-    // left-left imbalance
-    return this->rotate_right();
-  }
-
-  return shared_from_this();
-}
-
-shared_ptr<AVLNode> AVLNode::successor()
-{
-  shared_ptr<AVLNode> node = this->right;
-  while (node->left)
-  {
-    node = node->left;
-  }
-  return node;
 }
 
 // modified from

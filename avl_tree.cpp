@@ -42,23 +42,20 @@ void AVLTree::put(db_key_t key, db_val_t val)
 }
 
 void AVLTree::scan(db_key_t min_key, db_key_t max_key,
+                   vector<pair<db_key_t, db_val_t> > &pairs, set<db_key_t> *deleted_keys)
+{
+  if (this->root)
+  {
+     this->root->scan(min_key, max_key, pairs, deleted_keys);
+  }
+}
+
+void AVLTree::scan(db_key_t min_key, db_key_t max_key,
                    vector<pair<db_key_t, db_val_t> > &pairs)
 {
   if (this->root)
   {
     this->root->scan(min_key, max_key, pairs);
-  }
-}
-
-void AVLTree::del(db_key_t key)
-{
-  if (this->root)
-  {
-    this->root = this->root->del(key);
-  }
-  else
-  {
-    throw invalid_argument("Key not found");
   }
 }
 

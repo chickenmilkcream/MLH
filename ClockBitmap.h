@@ -1,7 +1,3 @@
-//
-// Created by oof on 3/13/2023.
-//
-
 #ifndef CSC443_PA_CLOCKBITMAP_H
 #define CSC443_PA_CLOCKBITMAP_H
 #include <unordered_map>
@@ -22,10 +18,8 @@ public:
 
 private:
     int capacity;
-    vector<shared_ptr<PageFrame>> bitmap;
     int clock_hand = 0;
+    vector<shared_ptr<PageFrame>> bitmap;
 };
-
-
 
 #endif //CSC443_PA_CLOCKBITMAP_H

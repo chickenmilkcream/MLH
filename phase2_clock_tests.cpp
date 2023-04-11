@@ -1,9 +1,3 @@
-//
-// Created by oof on 3/14/2023.
-//
-//
-// Created by oof on 3/12/2023.
-//
 #include <iostream>
 #include <cassert>
 #include "bp_directory.h"
@@ -78,8 +72,6 @@ int main(int argc, char *argv[]) {
     assert(bpd.directory["111"]->size == 1);
     assert(bpd.directory["010"] == bpd.directory["011"]);
 
-    std::cout << "passed amy's tests. this is not a woman moment \n testing eviction now    \n";
-
     for (auto i = 10; i != 16; i++) {
         page_number++;
         bpd.insert_page(&page_content[i], num_pairs_in_page, sst_name, page_number);
@@ -112,8 +104,6 @@ int main(int argc, char *argv[]) {
 
     bpd.print_directory();
 
-    std::cout << "big oof \n";
-
     bpd.get_page(sst_name, 9);
     bpd.get_page(sst_name, 11);
 
@@ -121,7 +111,7 @@ int main(int argc, char *argv[]) {
          page_number++;
          cout << "inserting page " << page_number << endl;
 
-         bpd.insert_page(&page_content[i], num_pairs_in_page, sst_name, page_number);
+        bpd.insert_page(&page_content[i], num_pairs_in_page, sst_name, page_number);
      }
 
 
@@ -133,7 +123,6 @@ int main(int argc, char *argv[]) {
         std::cout << "page 1 evicted \n";
     }
 
-    // // TODO test clock eviction
     std::cout << "passed clock eviction tests \n";
 
 

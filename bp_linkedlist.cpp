@@ -1,6 +1,6 @@
 #include "bp_linkedlist.h"
 #include "memory"
-
+#include <vector>
 BPLinkedList::BPLinkedList()
 {
     head = nullptr;
@@ -8,7 +8,8 @@ BPLinkedList::BPLinkedList()
     clock_cycle_count = 0;
 }
 
-shared_ptr<PageFrame> BPLinkedList::add_page_frame(void *page_content, int num_pairs_in_page, string sst_name, int page_number)
+shared_ptr<PageFrame>
+BPLinkedList::add_page_frame(void *page_content, int num_pairs_in_page, string sst_name, int page_number)
 {
     this->size ++;
 
@@ -50,7 +51,7 @@ void BPLinkedList::print_list()
     shared_ptr<PageFrame> current = head;
     while (current != nullptr)
     {
-        cout << current->page_number << ": " << current->clock_bit << ", ";
+        cout << current->sst_name << " Page " << current->page_number << ";" << endl;
         current = current->next;
     }
     cout << endl;

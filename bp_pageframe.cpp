@@ -15,7 +15,6 @@ PageFrame::PageFrame(void *page_content, int num_pairs_in_page, string sst_name,
     this->num_pairs_in_page = num_pairs_in_page;
     this->next = nullptr;
     this->clock_bit = 1;
-
 }
 
 int PageFrame::get_reference_bit() {
@@ -23,7 +22,6 @@ int PageFrame::get_reference_bit() {
 }
 
 void PageFrame::set_reference_bit(int bit) {
-//    cout << "setting reference bit of page number " << page_number << " to " << bit << endl;
     this->clock_bit = bit;
 }
 
@@ -38,5 +36,3 @@ void PageFrame::set_id(int id) {
 int PageFrame::get_page_number() {
     return page_number;
 }
-
-
