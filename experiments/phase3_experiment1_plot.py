@@ -20,8 +20,9 @@ def plot_pls(input_file_name, title, output_file_name):
     # Create a new figure and axis object
     fig, ax = plt.subplots()
 
-    # Plot the data
-    ax.plot(x, y, 'o-')
+    # Plot the data removing outliers
+    ax.plot(x, y, label='Runtime')
+
 
     # Set the axis labels and title
     ax.set_xlabel('Volume of data inserted (bytes)')

@@ -20,6 +20,11 @@ phase3_experiment1: clean $(OBJFILES) experiments/phase3_experiment1.o
 	$(CC) $(CFLAGS) -o experiments/phase3_experiment1 $(OBJFILES) experiments/phase3_experiment1.o
 	./experiments/phase3_experiment1
 
+phase3_experiment2: clean $(OBJFILES) experiments/phase3_experiment2.o
+	$(CC) $(CFLAGS) -o experiments/phase3_experiment2 $(OBJFILES) experiments/phase3_experiment2.o
+	./experiments/phase3_experiment2
+
+
 phase1_tests: clean $(OBJFILES) phase1_tests.o
 	$(CC) $(CFLAGS) -o phase1_tests $(OBJFILES) phase1_tests.o
 	./phase1_tests
