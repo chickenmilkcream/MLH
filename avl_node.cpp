@@ -104,7 +104,7 @@ shared_ptr<AVLNode> AVLNode::put(db_key_t key, db_val_t val)
   }
   else
   {
-    this->val = val; // already exists
+    this->val = val; // already exists, overwrite existing value
     return shared_from_this();
   }
 
@@ -112,6 +112,7 @@ shared_ptr<AVLNode> AVLNode::put(db_key_t key, db_val_t val)
                      this->right ? this->right->height : 0) +
                  1;
 
+  // rebalance...
   int balance = (this->left ? this->left->height : 0) -
                 (this->right ? this->right->height : 0);
   if (balance < -1 && this->right->key < key)
@@ -170,6 +171,7 @@ void AVLNode::scan(db_key_t min_key, db_key_t max_key,
 void AVLNode::scan(db_key_t min_key, db_key_t max_key,
                    vector<pair<db_key_t, db_val_t> > &pairs)
 {
+  // inorder traversal but only include nodes with keys in [min_key, max_key]
   if (this->key > min_key)
   {
     if (this->left)
@@ -190,16 +192,6 @@ void AVLNode::scan(db_key_t min_key, db_key_t max_key,
       this->right->scan(min_key, max_key, pairs);
     }
   }
-}
-
-shared_ptr<AVLNode> AVLNode::successor()
-{
-  shared_ptr<AVLNode> node = this->right;
-  while (node->left)
-  {
-    node = node->left;
-  }
-  return node;
 }
 
 // modified from

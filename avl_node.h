@@ -41,7 +41,6 @@ private:
 
   shared_ptr<AVLNode> rotate_left();
   shared_ptr<AVLNode> rotate_right();
-  shared_ptr<AVLNode> successor();
 };
 
 #endif

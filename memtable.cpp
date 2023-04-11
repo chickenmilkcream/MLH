@@ -9,7 +9,7 @@ Memtable::Memtable(size_t memtable_size)
 {
   this->max_size = memtable_size;
   this->size = 0;
-  this->tree = AVLTree();
+  this->tree = AVLTree(); // In-memory memtable as balanced binary tree (1)
 }
 
 db_val_t Memtable::get(db_key_t key) { return this->tree.get(key); }

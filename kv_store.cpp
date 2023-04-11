@@ -14,19 +14,23 @@
 
 using namespace std;
 
+// return ceil of x to the nearest multiple of n
 long nceil(long x, long n) {
     return ceil((double) x / n) * n;
 }
 
+// return floor of x to the nearest multiple of n
 long nfloor(long x, long n) {
     return floor((double) x / n) * n;
 }
 
+// return whether the file with the given filename exists
 bool exists(string filename) {
     struct stat sb;
     return stat(filename.c_str(), &sb) == 0;
 }
 
+// wrapper for pwrite; page-aligns buffer in memory before calling pwrite for direct I/O
 ssize_t aligned_pwrite(int fd, const void *buf, size_t n, off_t fp) {
     size_t size = nceil(n, PAGE_SIZE);
     void *aligned_buf = aligned_alloc(PAGE_SIZE, size);
@@ -37,6 +41,7 @@ ssize_t aligned_pwrite(int fd, const void *buf, size_t n, off_t fp) {
     return n_written;
 }
 
+// wrapper for pread; page-aligns buffer in memory before calling pread for direct I/O
 ssize_t aligned_pread(int fd, void *buf, size_t n, off_t fp) {
     size_t size = nceil(n, PAGE_SIZE);
     void *aligned_buf = aligned_alloc(PAGE_SIZE, size);
@@ -75,10 +80,11 @@ KeyValueStore::KeyValueStore(size_t memtable_size,
     this->buffer_pool = BPDirectory(eviction_policy, initial_num_bits, maximum_bp_size, maximum_num_items_threshold);
 }
 
+// read from the buffer pool if the page is found, otherwise read from storage
 void KeyValueStore::bpread(string filename, int fd, void *buf, off_t fp) {
-    // aligned_pread(fd, buf, PAGE_SIZE, fp);
     size_t b = PAGE_SIZE / DB_PAIR_SIZE; // number of key-value pairs per page
     try {
+        // Integration buffer with get (2)
         void *page = this->buffer_pool.get_page(filename, fp / PAGE_SIZE)->page_content;
         memcpy(buf, page, PAGE_SIZE);
     } catch (out_of_range &e) {
@@ -87,10 +93,12 @@ void KeyValueStore::bpread(string filename, int fd, void *buf, off_t fp) {
     }
 }
 
+// Database open and close API (1)
 void KeyValueStore::open_db(string db)
 {
 }
 
+// Database open and close API (1)
 void KeyValueStore::close_db()
 {
     this->serialize();
@@ -101,9 +109,11 @@ void KeyValueStore::close_db()
  * helper function for KeyValueStore::get and KeyValueStore::scan
  * assigns fp to the offset of the page containing key
  */ 
+// SSTs in storage with efficient binary search (1)
 void KeyValueStore::binary_search(string filename, int fd, db_key_t key, vector<size_t> sizes, size_t height, off_t &start, off_t &fp) {
     size_t b = PAGE_SIZE / DB_PAIR_SIZE; // number of key-value pairs per page
 
+    // assign start to offset of terminal nodes
     start = fp;
     for (size_t i = 0; i < height - 1; i++) {
         start += nceil(sizes[i] * DB_KEY_SIZE, PAGE_SIZE);
@@ -111,7 +121,7 @@ void KeyValueStore::binary_search(string filename, int fd, db_key_t key, vector<
 
     char buf[PAGE_SIZE];
 
-    // binary search in storage
+    // binary search in storage for page containing key
     ssize_t low = start / PAGE_SIZE;
     ssize_t high = (start + nceil(sizes[height - 1] * DB_PAIR_SIZE, PAGE_SIZE)) / PAGE_SIZE - 1;
 
@@ -135,9 +145,11 @@ void KeyValueStore::binary_search(string filename, int fd, db_key_t key, vector<
  * helper function for KeyValueStore::get and KeyValueStore::scan
  * assigns fp to the offset of the page containing key
  */ 
+// Static B-tree for SSTs (2)
 void KeyValueStore::b_tree_search(string filename, int fd, db_key_t key, vector<size_t> sizes, size_t height, off_t &start, off_t &fp) {
     size_t b = PAGE_SIZE / DB_PAIR_SIZE; // number of key-value pairs per page
 
+    // assign start to offset of non-terminal nodes
     start = fp;
 
     char buf[PAGE_SIZE];
@@ -146,7 +158,7 @@ void KeyValueStore::b_tree_search(string filename, int fd, db_key_t key, vector<
     off_t offset = fp; // fp is page-aligned but offset is not stricly page-aligned
     size_t i = 0;
     while (i < height - 1) {
-        // binary search in memory
+        // binary search in memory for next page to search
         ssize_t low = (offset - fp) / DB_KEY_SIZE;
         ssize_t high = min(low + b, sizes[i] - (fp - start) / DB_KEY_SIZE) - 1;
 
@@ -161,6 +173,7 @@ void KeyValueStore::b_tree_search(string filename, int fd, db_key_t key, vector<
             }
         }
 
+        // update variables for next page
         offset = start + nceil(sizes[i] * DB_KEY_SIZE, PAGE_SIZE) + 
                  (((offset - start) / DB_KEY_SIZE) / b * (b + 1) + j - 
                   (offset - fp) / DB_KEY_SIZE) * b * 
@@ -173,6 +186,7 @@ void KeyValueStore::b_tree_search(string filename, int fd, db_key_t key, vector<
     }
 }
 
+// KV-store get API (1)
 db_val_t KeyValueStore::get(db_key_t key, search_alg alg)
 {    
     size_t b = PAGE_SIZE / DB_PAIR_SIZE; // number of key-value pairs per page
@@ -206,7 +220,7 @@ db_val_t KeyValueStore::get(db_key_t key, search_alg alg)
 
                 vector<size_t> sizes;
                 size_t height;
-                this->sizes(filename, fd, fp, sizes, height);
+                this->sizes(filename, fd, fp, sizes, height); // read metadata
 
                 if (alg == search_alg::binary_search) {
                     this->binary_search(filename, fd, key, sizes, height, start, fp);
@@ -221,7 +235,7 @@ db_val_t KeyValueStore::get(db_key_t key, search_alg alg)
                 this->bpread(filename, fd, buf, fp);
                 close(fd);
 
-                // binary search in memory
+                // binary search in memory for key
                 ssize_t low = 0;
                 ssize_t high = min(b, sizes[height - 1] - (fp - start) / DB_PAIR_SIZE) - 1;
 
@@ -246,13 +260,15 @@ db_val_t KeyValueStore::get(db_key_t key, search_alg alg)
     }
 }
 
+// KV-store put API (1)
+// Support update (3)
 void KeyValueStore::put(db_key_t key, db_val_t val)
 {   
     if (val == DB_TOMBSTONE) {
         throw invalid_argument("Value not allowed");
     }
-
-    this->memtable.put(key, val);
+    
+    this->memtable.put(key, val); // put inserts if the key does not exist, otherwise it updates
 
     if (this->memtable.size + DB_PAIR_SIZE > this->memtable.max_size)
     {
@@ -260,9 +276,10 @@ void KeyValueStore::put(db_key_t key, db_val_t val)
     }
 }
 
+// Support delete (3)
 void KeyValueStore::del(db_key_t key)
 {
-    this->memtable.put(key, DB_TOMBSTONE);
+    this->memtable.put(key, DB_TOMBSTONE); // put in tombstone
 
     if (this->memtable.size + DB_PAIR_SIZE > this->memtable.max_size)
     {
@@ -270,6 +287,7 @@ void KeyValueStore::del(db_key_t key)
     }
 }
 
+// KV-store scan API (1)
 vector<pair<db_key_t, db_val_t> > KeyValueStore::scan(db_key_t min_key, db_key_t max_key, search_alg alg)
 {
     size_t b = PAGE_SIZE / DB_PAIR_SIZE; // number of key-value pairs per page
@@ -278,6 +296,8 @@ vector<pair<db_key_t, db_val_t> > KeyValueStore::scan(db_key_t min_key, db_key_t
     if (min_key > max_key) {
         return {};
     }
+
+    // get memtable results
     vector<pair<db_key_t, db_val_t> > pairs = this->memtable.scan(min_key, max_key, &deleted_keys);
     
     // Loop through the SSTs from latest to oldest
@@ -290,7 +310,7 @@ vector<pair<db_key_t, db_val_t> > KeyValueStore::scan(db_key_t min_key, db_key_t
 
         vector<size_t> sizes;
         size_t height;
-        this->sizes(filename, fd, fp, sizes, height);
+        this->sizes(filename, fd, fp, sizes, height); // read metadata
 
         if (alg == search_alg::binary_search) {
             this->binary_search(filename, fd, min_key, sizes, height, start, fp);
@@ -305,7 +325,7 @@ vector<pair<db_key_t, db_val_t> > KeyValueStore::scan(db_key_t min_key, db_key_t
         this->bpread(filename, fd, buf, fp);
         fp += PAGE_SIZE;
 
-        // binary search in memory (for key greater than or equal to min_key)
+        // binary search in memory for key greater than or equal to min_key
         ssize_t low = 0;
         ssize_t high = min(b, sizes[height - 1] - (fp - PAGE_SIZE - start) / DB_PAIR_SIZE) - 1;
         
@@ -347,6 +367,10 @@ vector<pair<db_key_t, db_val_t> > KeyValueStore::scan(db_key_t min_key, db_key_t
 
 void KeyValueStore::print() { this->memtable.print(); }
 
+/*
+ * read the metadata (namely the number of keys or key-value pairs in each level)
+ * and move fp to point to the start of the non-terminal nodes
+ */
 void KeyValueStore::sizes(string filename, int fd, off_t &fp, vector<size_t> &sizes, size_t &height) {
     fp = 0;
 
@@ -429,6 +453,7 @@ void KeyValueStore::write_to_file(const char *filename,
 
     char buf[PAGE_SIZE];
 
+    // copy from temp to SST
     while (fp_terminal_nodes < nceil(sizes[height - 1] * DB_PAIR_SIZE, PAGE_SIZE)) {
         aligned_pread(fd_terminal_nodes, buf, PAGE_SIZE, fp_terminal_nodes);
         fp_terminal_nodes += PAGE_SIZE;
@@ -454,7 +479,7 @@ void KeyValueStore::read_from_file(const char *filename)
     off_t fp = 0;
 
     size_t height;
-    this->sizes(filename, fd, fp, sizes, height);
+    this->sizes(filename, fd, fp, sizes, height); // read metadata
 
     for (size_t i = 0; i < height - 1; i++) {
         non_terminal_nodes.push_back({});
@@ -515,14 +540,15 @@ void KeyValueStore::read_from_file(const char *filename)
     cout << "]" << endl;
 }
 
+// Compaction/Merge of two trees (3)
 void KeyValueStore::compact_files(vector<string> filenames) // filenames are ordered from NEWEST to OLDEST
 {
     size_t size;
     vector<db_key_t> fence_keys;
 
     auto bf = make_shared<BloomFilter>("filename", 0, 5);
-    this->compact_files_first_pass(filenames, size, fence_keys, bf);
-    this->compact_files_second_pass(filenames, size, fence_keys, bf);
+    this->compact_files_first_pass(filenames, size, fence_keys, bf); // first pass does compaction
+    this->compact_files_second_pass(filenames, size, fence_keys, bf); // second pass does B-tree reconstruction
     this->buffer_pool.insert_bloom_filter(bf);
 }
 
@@ -566,12 +592,12 @@ void KeyValueStore::compact_files_first_pass(vector<string> filenames, size_t &s
     vector<size_t> sizes[2];
     size_t height[2];
     for (size_t i = 0; i < 2; i++) {
-        this->sizes(filenames[i], fd_in[i], fp_in[i], sizes[i], height[i]);
+        this->sizes(filenames[i], fd_in[i], fp_in[i], sizes[i], height[i]);  // read metadata
         start_in[i] = fp_in[i];
         for (size_t j = 0; j < height[i] - 1; j++) {
-            start_in[i] += nceil(sizes[i][j] * DB_KEY_SIZE, PAGE_SIZE);
+            start_in[i] += nceil(sizes[i][j] * DB_KEY_SIZE, PAGE_SIZE); // assign start to offset of terminal nodes
         }
-        fp_in[i] = start_in[i];
+        fp_in[i] = start_in[i]; // assign fp to offset of terminal nodes
     }
 
     // similar to fp_in, but not necessarily page-aligned
@@ -588,7 +614,7 @@ void KeyValueStore::compact_files_first_pass(vector<string> filenames, size_t &s
         fp_in[i] += PAGE_SIZE;
     }
 
-    db_key_t min_key_prev;
+    db_key_t min_key_prev; // for tracking whether the current minimum key is a duplicate
     while (true) {
         size_t i = 0;
         while (i < 2 && (offset_in[i] - start_in[i]) / DB_PAIR_SIZE == sizes[i][height[i] - 1]) {
@@ -596,9 +622,10 @@ void KeyValueStore::compact_files_first_pass(vector<string> filenames, size_t &s
             i++;
         }
         if (i == 2) {
+            // all files have been fully read
+
             // write output buffer to page in output file, if not empty
             if ((offset_out - fp_out) / DB_PAIR_SIZE < b) {
-                // print out the buf_out
                 for (size_t j = 0; j < (offset_out - fp_out) / DB_PAIR_SIZE; j++) {
                     cout << "inserting 1 " << ((pair<db_key_t, db_val_t> *) buf_out)[j].first << endl;
                     bf->insert(((pair<db_key_t, db_val_t> *) buf_out)[j].first);
@@ -618,6 +645,7 @@ void KeyValueStore::compact_files_first_pass(vector<string> filenames, size_t &s
                 // j-th file has NOT been fully read yet
                 db_key_t key = ((pair<db_key_t, db_val_t> *) buf_in[j])[(offset_in[j] - fp_in[j] + PAGE_SIZE) / DB_PAIR_SIZE].first;
                 if (key < min_key) {
+                    // update min_key and its value
                     min_key = key;
                     val = ((pair<db_key_t, db_val_t> *) buf_in[j])[(offset_in[j] - fp_in[j] + PAGE_SIZE) / DB_PAIR_SIZE].second;
                     i = j;
@@ -625,7 +653,9 @@ void KeyValueStore::compact_files_first_pass(vector<string> filenames, size_t &s
             }
         }
 
-        size_t lvl = stoi(filenames[0].substr(4, filenames[0].find(".2.bin")));
+        // i is the index of the buffer containing the minimum key
+
+        size_t lvl = stoi(filenames[0].substr(4, filenames[0].find(".2.bin"))); // parse filename for level
 
         // write minimum key to output buffer
         if ((offset_out - start_out == 0 || min_key != min_key_prev) &&
