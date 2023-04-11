@@ -127,7 +127,6 @@ int main(int argc, char *argv[]) {
         std::cout << "page 1 evicted \n";
     }
 
-    // // TODO test clock eviction
     std::cout << "passed clock eviction tests \n";
 
 

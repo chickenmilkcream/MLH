@@ -26,7 +26,7 @@ int main(int argc, char *argv[])
         page_content.push_back(make_pair(i, i));
     }
     
-
+    // Original tests for Phase 2, before Phase 3 were implemented
     // std::cout << "Running test cases for Phase 2 \n";
     // std::cout << "--------------------------------------------------------------- \n";
 

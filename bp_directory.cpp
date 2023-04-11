@@ -403,8 +403,6 @@ void BPDirectory::insert_bloom_filter(shared_ptr<BloomFilter> bf)
     string sst_name = bf->sst_name;
     // put *bf into bloom_filters with key sst_name
     this->bloom_filters[sst_name] = bf;
-    // cout << "inserted bloom filter with sst_name: " << sst_name << this->bloom_filters[sst_name]->sst_name << endl;
-    //    this->current_bp_size += bf->size;
     this->evict_until_under_max_bp_size();
 }
 
@@ -416,7 +414,6 @@ void BPDirectory::remove_bloom_filter(string sst_name)
 
 void BPDirectory::load_bloom_filter(string sst_name)
 {
-    // TODO: figure out how to save and load bloom filters to disk, including metadata like bf size, num_hashes and num_bits
 }
 
 shared_ptr<BloomFilter> BPDirectory::get_bloom_filter(string sst_name)

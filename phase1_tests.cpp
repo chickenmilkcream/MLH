@@ -9,7 +9,7 @@ int main(int argc, char *argv[])
     /* ================= BINARY SEARCH GET, PUT, SCAN TESTS ================= */
     cout << "========== BINARY SEARCH GET, PUT, SCAN TESTS ==========" << endl;
 
-    /* 
+    /*
      * each page stores 4096 / 16 = 256 key-value pairs (for terminal nodes) or
      * 4096 / 8 = 512 keys (for non-terminal nodes)
      */
@@ -27,40 +27,47 @@ int main(int argc, char *argv[])
 
     // generate random key-value pairs
     unordered_map<db_key_t, db_val_t> pairs;
-    while (pairs.size() < n) {
+    while (pairs.size() < n)
+    {
         db_key_t key = rand();
         db_val_t val = rand();
         pairs[key] = val;
     }
 
-    for (auto pair : pairs) {
+    for (auto pair : pairs)
+    {
         db_key_t key = pair.first;
         db_val_t val = pair.second;
         db.put(key, val);
     }
-    cout << "Passed " << n << " put operations." << endl << endl;
+    cout << "Passed " << n << " put operations." << endl
+         << endl;
 
     cout << "Testing " << n << " get operations (with binary search)..." << endl;
     int i = 0;
-    for (auto pair : pairs) {
+    for (auto pair : pairs)
+    {
         db_key_t key = pair.first;
         db_val_t val = pair.second;
         assert(db.get(key, search_alg::binary_search) == val);
-        if (i > 0 && i % 100 == 0) {
+        if (i > 0 && i % 100 == 0)
+        {
             cout << "Tested " << i << " get operations so far..." << endl;
         }
         i++;
     }
-    cout << "Done! Passed " << n << " get operations." << endl << endl;
+    cout << "Done! Passed " << n << " get operations." << endl
+         << endl;
 
     vector<db_key_t> keys;
-    for (auto pair : pairs) {
+    for (auto pair : pairs)
+    {
         db_key_t key = pair.first;
         keys.push_back(key);
     }
     sort(keys.begin(), keys.end());
 
-    vector<pair<db_key_t, db_key_t> > ranges = {
+    vector<pair<db_key_t, db_key_t>> ranges = {
         make_pair(keys[0], keys[0]),
         make_pair(keys[n - 1], keys[n - 1]),
         make_pair(keys[1], keys[0]),
@@ -68,33 +75,35 @@ int main(int argc, char *argv[])
         make_pair(DB_KEY_MIN, DB_KEY_MAX),
         make_pair(keys[0], keys[n / 2]),
         make_pair(keys[n / 2], keys[n - 1]),
-        make_pair(keys[n / 4], keys[3 * n / 4])
-    };
-    for (auto range : ranges) {
+        make_pair(keys[n / 4], keys[3 * n / 4])};
+    for (auto range : ranges)
+    {
         db_key_t min_key = range.first;
         db_key_t max_key = range.second;
 
         unordered_map<db_key_t, db_val_t> a;
         unordered_map<db_key_t, db_val_t> b;
-        for (auto pair : pairs) {
+        for (auto pair : pairs)
+        {
             db_key_t key = pair.first;
             db_val_t val = pair.second;
-            if (key >= min_key && key <= max_key) {
+            if (key >= min_key && key <= max_key)
+            {
                 a.insert(make_pair(key, val));
             }
         }
-        vector<pair<db_key_t, db_val_t> > pairs_in_range = db.scan(
+        vector<pair<db_key_t, db_val_t>> pairs_in_range = db.scan(
             min_key,
             max_key,
-            search_alg::binary_search
-        );
-        for (auto pair : pairs_in_range) {
+            search_alg::binary_search);
+        for (auto pair : pairs_in_range)
+        {
             db_key_t key = pair.first;
             db_val_t val = pair.second;
             b.insert(make_pair(key, val));
         }
         assert(a == b);
-        cout << "Passed scan operation for range [" << min_key << ", " << max_key  << "]." << endl;
+        cout << "Passed scan operation for range [" << min_key << ", " << max_key << "]." << endl;
     }
 
     db.put(5, 1);
@@ -112,10 +121,11 @@ int main(int argc, char *argv[])
     db.del(2147469841); // currently in sst
     db.put(10, 2);
     db.del(10);
-    vector<pair<db_key_t, db_val_t> > result = db.scan(DB_KEY_MIN, DB_KEY_MAX);
+    vector<pair<db_key_t, db_val_t>> result = db.scan(DB_KEY_MIN, DB_KEY_MAX);
     assert(result.size() == n - 2);
     cout << "Passed key deletion in memtable." << endl;
 
+    // Original tests for Phase 1, before Phase 2 and 3 were implemented
     /* ================= BINARY SEARCH GET, PUT, SCAN TESTS ================= */
 
     // int memtable_size = 144;
@@ -144,7 +154,7 @@ int main(int argc, char *argv[])
     // kv.put(3, 0);
     // kv.put(10, 1);
     // kv.put(11, 17);
-    
+
     // std::cout << "* Insert 8 pairs passed \n";
 
     // assert(kv.get(5) == 1);
