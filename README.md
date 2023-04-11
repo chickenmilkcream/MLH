@@ -1,5 +1,8 @@
 # CSC443 Final Project
 
+### Report
+Can be found under `CSC443 Final Project Report.pdf`.
+
 ### Verification
 Here are some make commands that could be potentially useful.  
 
@@ -7,7 +10,11 @@ Here are some make commands that could be potentially useful.
 - `make phase1_experiments`
 - `make phase2_experiment1`
 - `make phase2_experiment2`
+- `make phase3_experiment1`
+- `make phase3_experiment2`
 - `make clean`
+
+Please note that the Phase 1 and Phase 2 experiments cannot be executed because the code undergoes changes that cause them to break once Phase 3 is implemented, due to the addition of new features since their execution.
 
 ### Notes
 For each of the items in the list of design elements/experiments, there's a corresponding comment in the code files that point to where it's being implemented. For example, search for "`KV-store get API (1) - 1 points`".
@@ -41,3 +48,5 @@ db.del(key);
 db.print();
 db.close_db();
 ```
+
+
