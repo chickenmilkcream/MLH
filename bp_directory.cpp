@@ -20,17 +20,17 @@ using namespace std;
 
 BPDirectory::BPDirectory(string eviction_policy, int initial_num_bits, int maximum_bp_size, int maximum_num_items_threshold)
 {
-    this->policy = eviction_policy;                                       // This is the eviction polivy, should be "LRU" or "clock"
+    this->policy = eviction_policy; // This is the eviction polivy, should be "LRU" or "clock"
 
-    this->initial_num_bits = initial_num_bits;                            // This is the initial number of prefix bits in the directory
-    this->current_num_bits = initial_num_bits;                            // This tracks the current number of prefix bits in the directory
+    this->initial_num_bits = initial_num_bits; // This is the initial number of prefix bits in the directory
+    this->current_num_bits = initial_num_bits; // This tracks the current number of prefix bits in the directory
 
-    this->current_bp_size = 0;                                            // This is the total number of bytes of items currently in the buffer pool
-    this->maximum_bp_size = maximum_bp_size;                              // This is the max number of bytes that the buffer pool can contain before eviction policy should kick in
-    
-    this->current_num_items = 0;                                          // This is the total number of items currently in the buffer pool
-    this->maximum_num_items_threshold = maximum_num_items_threshold;      // This is the maximum number of items we can have in the buffer pool before expansion, which results in doubling
-    this->page_id = 0;                                                    // The total number of pages we've interacted before (placeholder value)
+    this->current_bp_size = 0;               // This is the total number of bytes of items currently in the buffer pool
+    this->maximum_bp_size = maximum_bp_size; // This is the max number of bytes that the buffer pool can contain before eviction policy should kick in
+
+    this->current_num_items = 0;                                     // This is the total number of items currently in the buffer pool
+    this->maximum_num_items_threshold = maximum_num_items_threshold; // This is the maximum number of items we can have in the buffer pool before expansion, which results in doubling
+    this->page_id = 0;                                               // The total number of pages we've interacted before (placeholder value)
 
     for (const string &prefix : generate_binary_strings(this->initial_num_bits))
     {
@@ -44,8 +44,9 @@ BPDirectory::BPDirectory(string eviction_policy, int initial_num_bits, int maxim
     this->clock_cycle_count = 1;
 }
 
-
-shared_ptr<PageFrame> BPDirectory::clock_find_victim() {
+// Clock eviction policy(2)
+shared_ptr<PageFrame> BPDirectory::clock_find_victim()
+{
     // find the victim using clock eviction policy and return the victim
     // We will start at the clock hand and go around the clock until we find a victim
     // If we don't find a victim, we will return nullptr
@@ -53,44 +54,53 @@ shared_ptr<PageFrame> BPDirectory::clock_find_victim() {
     // We will also update the clock hand to point to the next item in the clock bitmap
     // We will also update the clock hand key and clock hand index to point to the next item in the clock bitmap
 
-    while (true) {
+    while (true)
+    {
         this->move_clock_hand();
 
         shared_ptr<PageFrame> potential_victim = this->clock_hand_location;
-        if (potential_victim == nullptr) {
+        if (potential_victim == nullptr)
+        {
             continue;
         }
 
-        if (this->directory[this->directory_keys[this->clock_hand_key]]->clock_cycle_count < this->clock_cycle_count) {
-            if (potential_victim->get_reference_bit() == 0) {
+        if (this->directory[this->directory_keys[this->clock_hand_key]]->clock_cycle_count < this->clock_cycle_count)
+        {
+            if (potential_victim->get_reference_bit() == 0)
+            {
                 return potential_victim;
-            } else {
+            }
+            else
+            {
                 potential_victim->set_reference_bit(0);
             }
-            if (this->clock_hand_location->next == nullptr) {
+            if (this->clock_hand_location->next == nullptr)
+            {
                 this->directory[this->directory_keys[this->clock_hand_key]]->clock_cycle_count = this->clock_cycle_count;
             }
         }
     }
 }
 
-void BPDirectory::move_clock_hand() {
+void BPDirectory::move_clock_hand()
+{
     // update the reference bit of the victim to 1
     // update the clock hand to point to the next item in the clock bitmap
-    if (this->clock_hand_location == nullptr) {
+    if (this->clock_hand_location == nullptr)
+    {
         this->clock_hand_key++;
-        if ((size_t) this->clock_hand_key >= this->directory_keys.size()) {
+        if ((size_t)this->clock_hand_key >= this->directory_keys.size())
+        {
             this->clock_hand_key = 0;
             this->clock_cycle_count++;
         }
         this->clock_hand_location = this->directory[this->directory_keys[this->clock_hand_key]]->head;
     }
-    else {
+    else
+    {
         this->clock_hand_location = this->clock_hand_location->next;
-
     }
 }
-
 
 void BPDirectory::update_directory_keys()
 {
@@ -109,8 +119,7 @@ void BPDirectory::set_maximum_bp_size(int value)
     evict_until_under_max_bp_size();
 }
 
-void
-BPDirectory::insert_page(void *page_content, int num_pairs_in_page, string sst_name, int page_number)
+void BPDirectory::insert_page(void *page_content, int num_pairs_in_page, string sst_name, int page_number)
 {
     string source = sst_name + to_string(page_number);
     string directory_key = this->hash_string(source);
@@ -126,44 +135,56 @@ BPDirectory::insert_page(void *page_content, int num_pairs_in_page, string sst_n
     this->page_id += 1;
     newNode->set_id(this->page_id);
 
-    if (this->policy == "LRU") {
+    if (this->policy == "LRU")
+    {
         this->lru_cache->put(newNode->page_number, newNode);
     }
-    else { // clock
-        // don't need to do anything for now. We will update the clock hand when we need to evict
+    else
+    { // clock
+      // don't need to do anything for now. We will update the clock hand when we need to evict
     }
 
     this->evict_until_under_max_bp_size();
 
-    if (this->current_num_items >= this->maximum_num_items_threshold) {
+    if (this->current_num_items >= this->maximum_num_items_threshold)
+    {
         // This should rehash all the linkedlists greater than length 1 after expansion
         this->extend_directory();
         return;
-    } else {
+    }
+    else
+    {
     }
 
-
-    // Rehash as soon as chain length gets to be greater than 1 
+    // Rehash as soon as chain length gets to be greater than 1
     // Retrieved from: https://piazza.com/class/lckjb9lrfaa57i/post/78
     // Case 1: a bucket pointed at by just one pointer from the directory. This bucket already expanded since the last time the directory expanded. We need to patiently wait until the directory expands again before we can expand this bucket.
     // Case 2: a bucket pointed at by more than one pointer from the directory. We should expand this bucket immediately when it overflows.
     // This is Case 2
     vector<string> shared_keys = this->get_keys_sharing_linkedlist(this->directory, directory_key);
-    if (this->directory[directory_key]->size > 1 && shared_keys.size() > 1) {
+    if (this->directory[directory_key]->size > 1 && shared_keys.size() > 1)
+    {
         this->rehash_linked_list(&this->directory, directory_key, shared_keys);
     }
 }
 
-void BPDirectory::evict_until_under_max_bp_size() {
+// Shrink API (2)
+void BPDirectory::evict_until_under_max_bp_size()
+{
     shared_ptr<PageFrame> pageToEvict = nullptr;
-    while (this->current_bp_size > this->maximum_bp_size) {
-        if (this->policy == "LRU") {
+    while (this->current_bp_size > this->maximum_bp_size)
+    {
+        if (this->policy == "LRU")
+        {
+            // LRU eviction policy (2)
             pageToEvict = this->lru_cache->evict_one_page_item();
         }
-        else { // clock
+        else
+        { // clock
             pageToEvict = this->clock_find_victim();
         }
-        if (pageToEvict != nullptr) {
+        if (pageToEvict != nullptr)
+        {
             this->current_num_items--;
             this->current_bp_size -= PAGE_SIZE;
             this->evict_page(pageToEvict);
@@ -171,11 +192,14 @@ void BPDirectory::evict_until_under_max_bp_size() {
     }
 }
 
-void BPDirectory::mark_item_as_used(shared_ptr<PageFrame> pageFrame) {
-    if (this->policy == "LRU") {
+void BPDirectory::mark_item_as_used(shared_ptr<PageFrame> pageFrame)
+{
+    if (this->policy == "LRU")
+    {
         this->lru_cache->mark_item_as_used(pageFrame);
     }
-    else { // clock
+    else
+    { // clock
         pageFrame->set_reference_bit(1);
     }
 }
@@ -190,14 +214,14 @@ shared_ptr<PageFrame> BPDirectory::get_page(string sst_name, int page_number)
     return pageFrame;
 }
 
-
+// Extendible hash buffer pool (1)
 void BPDirectory::extend_directory()
 {
-    this->current_num_bits ++;
+    this->current_num_bits++;
     this->maximum_num_items_threshold *= 2;
 
     // Double the size of the directory and make it point to the same linkedlist
-    map<string, shared_ptr<BPLinkedList> > new_directory;
+    map<string, shared_ptr<BPLinkedList>> new_directory;
     for (const auto &pair : this->directory)
     {
         string prefix = pair.first;
@@ -220,32 +244,42 @@ void BPDirectory::extend_directory()
     this->update_directory_keys();
 }
 
-void BPDirectory::evict_page(shared_ptr<PageFrame> pageFrame) {
+void BPDirectory::evict_page(shared_ptr<PageFrame> pageFrame)
+{
     // remove the pageFrame from the directory hash map and linked list
     string source = pageFrame->sst_name + to_string(pageFrame->page_number);
     string directory_key = this->hash_string(source);
     this->directory[directory_key]->remove_page_frame(pageFrame);
 }
 
-void BPDirectory::evict_pages_associated_with_files(size_t memtable_size, vector<string> filenames) {
-    for (const auto& filename : filenames) {
+void BPDirectory::evict_pages_associated_with_files(size_t memtable_size, vector<string> filenames)
+{
+    for (const auto &filename : filenames)
+    {
         ifstream file(filename, std::ios::binary);
-        if (filesystem::exists(filename)) {
+        if (filesystem::exists(filename))
+        {
             file.seekg(0, std::ios::end);
             int file_size = static_cast<int>(file.tellg());
             int num_pages_in_file = file_size / PAGE_SIZE;
-            for (int page_number = 0; page_number < num_pages_in_file + 1; page_number++) {
+            for (int page_number = 0; page_number < num_pages_in_file + 1; page_number++)
+            {
                 string source = filename + to_string(page_number);
                 string directory_key = this->hash_string(source);
-                try {
+                try
+                {
                     shared_ptr<PageFrame> pageFrame = this->directory[directory_key]->find_page_frame(filename,
                                                                                                       page_number);
                     this->directory[directory_key]->remove_page_frame(pageFrame);
-                } catch (out_of_range &e) {
+                }
+                catch (out_of_range &e)
+                {
                     continue;
                 }
             }
-        } else {
+        }
+        else
+        {
             continue;
         }
     }
@@ -277,19 +311,23 @@ string BPDirectory::hash_string(string source)
     return directory_key;
 }
 
-void BPDirectory::set_policy(string policy) {
-    if (policy.compare("LRU") != 0 || policy.compare("clock") != 0) {
+void BPDirectory::set_policy(string policy)
+{
+    if (policy.compare("LRU") != 0 || policy.compare("clock") != 0)
+    {
         throw invalid_argument("This is not a valid policy. Please pass in LRU or clock.");
-    } else {
+    }
+    else
+    {
         this->policy = policy;
     }
 }
 
-void BPDirectory::rehash_linked_list(map<string, shared_ptr<BPLinkedList> > *directory, string key, vector<string> shared_keys)
+void BPDirectory::rehash_linked_list(map<string, shared_ptr<BPLinkedList>> *directory, string key, vector<string> shared_keys)
 {
     // Right now we have a situation where multiple entries both point to the same linkedlist
     // but this linkedlist need to be rehashed between the multiple entries because the length is too long
-    map<string, shared_ptr<BPLinkedList> > key_to_new_linkedlist;
+    map<string, shared_ptr<BPLinkedList>> key_to_new_linkedlist;
 
     for (const auto &shared_key : shared_keys)
     {
@@ -301,10 +339,13 @@ void BPDirectory::rehash_linked_list(map<string, shared_ptr<BPLinkedList> > *dir
     {
         string source = current->sst_name + to_string(current->page_number);
         string directory_key = this->hash_string(source);
-        if (key_to_new_linkedlist.find(directory_key) == key_to_new_linkedlist.end()) {
+        if (key_to_new_linkedlist.find(directory_key) == key_to_new_linkedlist.end())
+        {
             (*directory)[directory_key]->add_page_frame(current->page_content, current->num_pairs_in_page,
                                                         current->sst_name, current->page_number);
-        } else {
+        }
+        else
+        {
             key_to_new_linkedlist[directory_key]->add_page_frame(current->page_content, current->num_pairs_in_page,
                                                                  current->sst_name, current->page_number);
         }
@@ -319,7 +360,7 @@ void BPDirectory::rehash_linked_list(map<string, shared_ptr<BPLinkedList> > *dir
     }
 }
 
-vector<string> BPDirectory::get_keys_sharing_linkedlist(map<string, shared_ptr<BPLinkedList> > directory, string key)
+vector<string> BPDirectory::get_keys_sharing_linkedlist(map<string, shared_ptr<BPLinkedList>> directory, string key)
 {
     vector<string> shared_keys;
     shared_ptr<BPLinkedList> shared_linkedlist = directory[key];
@@ -338,7 +379,8 @@ vector<string> BPDirectory::get_keys_sharing_linkedlist(map<string, shared_ptr<B
     return shared_keys;
 }
 
-void BPDirectory::print_directory() {
+void BPDirectory::print_directory()
+{
     cout << "The number of pages in the directory: " << this->current_num_items << endl;
     for (auto prefix = this->directory.begin(); prefix != this->directory.end(); ++prefix)
     {
@@ -356,38 +398,34 @@ void BPDirectory::free_all_pages()
     }
 }
 
-void BPDirectory::insert_bloom_filter(shared_ptr<BloomFilter> bf) {
+void BPDirectory::insert_bloom_filter(shared_ptr<BloomFilter> bf)
+{
     string sst_name = bf->sst_name;
     // put *bf into bloom_filters with key sst_name
     this->bloom_filters[sst_name] = bf;
     // cout << "inserted bloom filter with sst_name: " << sst_name << this->bloom_filters[sst_name]->sst_name << endl;
-//    this->current_bp_size += bf->size;
+    //    this->current_bp_size += bf->size;
     this->evict_until_under_max_bp_size();
 }
 
-
-
-void BPDirectory::remove_bloom_filter(string sst_name) {
+void BPDirectory::remove_bloom_filter(string sst_name)
+{
     this->current_bp_size -= this->bloom_filters[sst_name]->size;
     this->bloom_filters.erase(sst_name);
 }
 
-void BPDirectory::load_bloom_filter(string sst_name) {
+void BPDirectory::load_bloom_filter(string sst_name)
+{
     // TODO: figure out how to save and load bloom filters to disk, including metadata like bf size, num_hashes and num_bits
 }
 
-shared_ptr<BloomFilter> BPDirectory::get_bloom_filter(string sst_name) {
+shared_ptr<BloomFilter> BPDirectory::get_bloom_filter(string sst_name)
+{
     // print this->bloom_filters
 
     // print out the sst_name of all the bloom filters
-//    for (auto it = this->bloom_filters.begin(); it != this->bloom_filters.end(); ++it) {
-//        cout << "The sst_name of the bloom filter: " << it->first << endl;
-//    }
+    //    for (auto it = this->bloom_filters.begin(); it != this->bloom_filters.end(); ++it) {
+    //        cout << "The sst_name of the bloom filter: " << it->first << endl;
+    //    }
     return this->bloom_filters[sst_name];
 }
-
-
-
-
-
-
