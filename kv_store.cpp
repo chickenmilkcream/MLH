@@ -468,6 +468,8 @@ void KeyValueStore::write_to_file(const char *filename,
 void KeyValueStore::read_from_file(const char *filename)
 {
     if (!exists(filename)) {
+        cout << filename << endl;
+        cout << "THISFJIODOFSJIFDIJOFOJIDOIJDOSIF" << endl;
         throw invalid_argument("File not found");
     }
     cout << "--- Reading from file: " << filename << endl;
@@ -627,7 +629,6 @@ void KeyValueStore::compact_files_first_pass(vector<string> filenames, size_t &s
             // write output buffer to page in output file, if not empty
             if ((offset_out - fp_out) / DB_PAIR_SIZE < b) {
                 for (size_t j = 0; j < (offset_out - fp_out) / DB_PAIR_SIZE; j++) {
-                    cout << "inserting 1 " << ((pair<db_key_t, db_val_t> *) buf_out)[j].first << endl;
                     bf->insert(((pair<db_key_t, db_val_t> *) buf_out)[j].first);
                 }
                 aligned_pwrite(fd_out, buf_out, PAGE_SIZE, fp_out);
@@ -821,7 +822,7 @@ void KeyValueStore::serialize()
         // cast pairs.size() to uint32_t
         // construct a new bloom filter with the size of pairs.size() using the definition from BloomFilter.h
         auto bf = make_shared<BloomFilter>(filename, pairs.size(), 5);
-        cout << "created new bloom filter for sst.1.1.bin" << endl;
+        // cout << "created new bloom filter for sst.1.1.bin" << endl;
         // insert all keys into the bloom filter
         for (auto &pair : pairs) {
             bf->insert(pair.first);
@@ -829,7 +830,7 @@ void KeyValueStore::serialize()
 //        cout << "inserted keys into bloom filter for sst.1.1.bin" << endl;
 
         this->buffer_pool.insert_bloom_filter(bf);
-        cout << "inserted bloom filter for sst.1.1.bin into buffer pool" << endl;
+        // cout << "inserted bloom filter for sst.1.1.bin into buffer pool" << endl;
 
         bf->write_to_file("bf_sst.1.1.bin");
 //        cout << "bloom filter now stored at bf_sst.1.1.bin" << endl;
@@ -852,7 +853,7 @@ bool KeyValueStore::use_bloom_filter(string sst_name, db_key_t key) {
     shared_ptr<BloomFilter> bf = this->buffer_pool.get_bloom_filter(sst_name);
 
     if (bf == nullptr) {
-        std::cout << "Bloom filter for " << sst_name << " not found in buffer pool" << std::endl;
+        // std::cout << "Bloom filter for " << sst_name << " not found in buffer pool" << std::endl;
         // TODO: load bloom filter from file
 
         return true;

@@ -25,7 +25,7 @@ void BloomFilter::insert(db_val_t value) {
 }
 
 bool BloomFilter::contains(db_val_t value) const {
-    cout << "checking if value " << value << " is in bloom filter" << endl;
+    // cout << "checking if value " << value << " is in bloom filter" << endl;
     for (uint32_t i = 0; i < num_hash_functions; ++i) {
         uint32_t index = hash(value, i) % num_bits;
         if (!bit_array[index]) {
